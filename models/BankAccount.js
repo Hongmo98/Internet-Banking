@@ -3,14 +3,21 @@ const { Schema } = mongoose;
 
 const bankAccountSchema = new Schema({
     accountNumber: String,
-    idUser: Schema.Types.ObjectId,
-    accountName: String,
-    openDate: { type: Date, default: Date.now },
+    accountName: String, // fullname cua khach hang
+    openDate: {type: Date , default: Date.now },
     closeDate: Date,
     currentBalance: Number,
-    idBank: Schema.Types.ObjectId
+    idBank: Schema.Types.ObjectId,
+    email: String,
+    identifyCard: String,
+    phone: String,
+    birthday: Date,
+    gender: String,
+    address: String,
+    avatar: { type: String, default: '/avata.png'},
+    hashPassword: String,
 })
 
-module.exports = mongoose.model('bankaccount', bankAccountSchema);
+module.exports = mongoose.model('bankAccount', bankAccountSchema);
 
 
