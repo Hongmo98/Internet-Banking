@@ -1,8 +1,9 @@
 var express = require('express');
 var router = express.Router();
 
-const Bank= require('../controller/bankController') 
+const bankController= require('../controller/bankController') 
 
-router.get('/',Bank.queryAccountInformation);
+router.get('/accountNumber',bankController.queryAccountInformation);
+
 
 module.exports = router;
