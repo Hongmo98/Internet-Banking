@@ -40,8 +40,7 @@ mnFd3gY=
 -----END PGP PUBLIC KEY BLOCK-----`;
 
 const passphrase = `nguyen thi hong mo`;
-let bankPartner = "MPBank "
-let sig = "MPBank xin chao"
+
 
 module.exports = {
 
@@ -53,6 +52,8 @@ module.exports = {
         console.log("time:", timeStamp);
 
         let sig = account + partner.Security_key + req.headers['headerts'];
+        let signature = bcrypt.hashSync(sig, 10);
+        console.log(signature);
         if (req.headers['partnercode'] === partner.Partner_Code) {
 
             let time = +req.headers['headerts'].toString() + 60000;
@@ -64,14 +65,14 @@ module.exports = {
                             return next({ error: { message: 'account is not exists', code: 422 } });
                         }
 
-                        let accountNumber = await bankAccount.find({ accountNumber: account });
-                        if (accountNumber == null) {
+                        let accountNumber = await bankAccount.findOne({ accountNumber: account });
+                        if (accountNumber === null) {
                             next({ error: { message: "Invalid data", code: 422 } });
                             return;
                         }
                         //hash khi tra ve 
-
-                        res.status(200).json({ result: accountNumber });
+                        let user = accountNumber.accountName;
+                        res.status(200).json({ result: user });
                     } catch (err) {
                         next(err);
                     }
@@ -91,23 +92,34 @@ module.exports = {
     },
 
     transactionAccount: async (req, res, next) => {
-        let { encrypted, accountReceiver, money } = req.body;
+
+        await openpgp.initWorker({ path: 'openpgp.worker.js' })
+
+        let { signature, accountReceiver, money } = req.body;
 
         const { keys: [privateKey] } = await openpgp.key.readArmored(privateKeyArmored);
         await privateKey.decrypt(passphrase);
+        ``
         try {
-            const { data: decrypted } = await openpgp.decrypt({
-                message: await openpgp.message.readArmored(encrypted),
-                privateKeys: [privateKey]                                           // for decryption
+            // cho lay public cua nguoi ta de verify
+            const verified = await openpgp.verify({
+                message: openpgp.cleartext.fromText('Nap tien '),
+                signature: await openpgp.signature.readArmored(signature),
+                publicKeys: (await openpgp.key.readArmored(publicKeyArmored)).keys
             });
 
-            if (decrypted === bankPartner) {
+            const { valid } = verified.signatures[0];
+            if (valid) {
+
                 if (!accountReceiver) {
                     return next({ error: { message: 'account is not exists', code: 422 } });
                 }
-
+                if (money === 'undefined') {
+                    return next({ error: { message: 'money empty', code: 422 } });
+                }
 
                 userReceiver = await bankAccount.findOne({ accountNumber: accountReceiver });
+
                 if (userReceiver == null) {
                     next({ error: { message: "Invalid data", code: 422 } });
                     return;
@@ -115,15 +127,14 @@ module.exports = {
 
                 userReceiver.currentBalance = +userReceiver.currentBalance + +money;
                 await userReceiver.save();
-                const options = {
-                    message: openpgp.message.fromText(sig),
-                    publicKeys: (await openpgp.key.readArmored(publicKeyArmored)).keys,
 
-                }
-
-                const { data: encryptedMP } = await openpgp.encrypt(options);
-
-                let obj = { encryptedMP, userReceiver, decrypted }
+                const { signature: detachedSignature } = await openpgp.sign({
+                    message: openpgp.cleartext.fromText('Hello, World!'),
+                    privateKeys: [privateKey],
+                    detached: true
+                });
+                let userName = userReceiver.accountName;
+                let obj = { userName, detachedSignature }
                 res.status(200).json({ result: obj });
 
 
@@ -140,18 +151,17 @@ module.exports = {
 
         await openpgp.initWorker({ path: 'openpgp.worker.js' })
 
-        const options = {
-            message: openpgp.message.fromText(bankPartner),
-            publicKeys: (await openpgp.key.readArmored(publicKeyArmored)).keys,
+        const { keys: [privateKey] } = await openpgp.key.readArmored(privateKeyArmored);
+        await privateKey.decrypt(passphrase);
 
-        }
+        const { signature: detachedSignature } = await openpgp.sign({
+            message: openpgp.cleartext.fromText('Nap tien'),
+            privateKeys: [privateKey],
+            detached: true
+        });
 
-        const { data: encrypted } = await openpgp.encrypt(options);
-        console.log({ openpgp })
-
-
-
-        res.status(200).json({ result: encrypted });
+        console.log(detachedSignature);
+        res.status(200).json({ result: detachedSignature });
 
 
     },
