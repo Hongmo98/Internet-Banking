@@ -1,5 +1,6 @@
 module.exports = {
-    Partner_Code: 'PMNN98',
+    Partner_CodeN: 'PMNN98',
+    Partner_CodeQ: 'MPB1230953386',
     Security_key: 'H8PIBP9MPMOM',
     privateKeyArmored: `-----BEGIN PGP PRIVATE KEY BLOCK-----
     Version: OpenPGP.js v4.10.4
@@ -34,16 +35,33 @@ module.exports = {
     mnFd3gY=
     =6NYp
     -----END PGP PUBLIC KEY BLOCK-----`,
-    revocationCertificate: ` -----BEGIN PGP PUBLIC KEY BLOCK-----
-    Version: OpenPGP.js v4.10.4
-    Comment: https://openpgpjs.org
-    Comment: This is a revocation certificate
+    publicPartnerQ: `-----BEGIN PGP PUBLIC KEY BLOCK-----
+    Version: Keybase OpenPGP v1.0.0
+    Comment: https://keybase.io/crypto
     
-    wmEEIBYKAAkFAl7DVdMCHQAACgkQrsP2+0GwTAQTfwEA/r+lyNn6zEjlGfN/
-    7vGIvPBnVsHvFKkamOQNCXnsZQcBAM+G4s3GYhHeTbdzBxTCb3m4XHXbpiQj
-    LCo24wxpqZEB
-    =NTmt
-    -----END PGP PUBLIC KEY BLOCK-----`
+    xm8EXsZNUxMFK4EEACIDAwSjWbuy49/VNWgBIxWFXy2n/d1uB3f4AaO2AY17roUV
+    2nEweZrhAxrMZcTcMZViE8nAQbaSsOdtwAJh3JsmsVvsPTOnl1DL1lFY0tqXM3LB
+    9nAE5dBhZVoOhmCSBxeCvETNImhhaGEgKG0pIDxoYW5saW5oMDEwMTk4QGdtYWls
+    LmNvbT7CjwQTEwoAFwUCXsZNUwIbLwMLCQcDFQoIAh4BAheAAAoJEFu3zLuz2Tcx
+    nxsBgJoyEx52OYzesTz568LRak066OUG6K2Nv6DdoFot3gSg50QE2voLpRW4e4t0
+    FWlDkAF/XRjGPgAroZl2jihiTdTx451sMugsoR4V6YMH6n0eJHsdG8nTV7r7SzNK
+    67EO5Kp2zlIEXsZNUxMIKoZIzj0DAQcCAwQgIOlsSCZpc/EBDN24IkoEANgx7kIj
+    /ADJx0KpGWlYLSioGQ1hfteUbFA1CkCGM8ojielJsRYfqnvjVG8HtdXVwsAnBBgT
+    CgAPBQJexk1TBQkPCZwAAhsuAGoJEFu3zLuz2TcxXyAEGRMKAAYFAl7GTVMACgkQ
+    19eEGWUeib8A3QEA15ufZOVMJgwsvrw3jo2Yf4Ti+UV1v5VFHmzUILkiVlgBAKaT
+    IczcgIDYntlQ82DC9kLHnzDjdKOjPZaHwFs7MgeuoJgBgKCB7VutmMMaJk4KrEuD
+    NsNR4dC2Hzu+H+mZz8R77mBc79Fl01of+kQ8AUirpuv5jgGAk7qZpeQPDKJS9/c5
+    Rs2z6uqQ5FCVKhTYVq1EQcvc4A4qR0hrcjXC3WnV3py3KTwNzlIEXsZNUxMIKoZI
+    zj0DAQcCAwTXwCCnTMcN9TT4IAMnQACotq1SupxpnYwfUZWKuxOmVLUqMkPs/gip
+    CFO9wXDT+Y7txAN+ZgzJWcAaTwRABsKVwsAnBBgTCgAPBQJexk1TBQkPCZwAAhsu
+    AGoJEFu3zLuz2TcxXyAEGRMKAAYFAl7GTVMACgkQcPwN3Nui7uo7tQD7BMG/71W+
+    5H9t9igOOIE3XUxINwenfPQs30FEm3GZJI4A/jLHz4CXs/9C4R312xNuRcW9SKCR
+    m3kvvTOrKZNgU4GxV8sBgNnWTltDD5v2bYWO7kYBhtI4ldAqxI+QfifJedt5rSOF
+    PQoExaOGIGvIU46c1ACQMwF/cRypDy71PdyZB4JrqIPmKdqLQYiTe5Bn5fl0xznd
+    j2d9FIusaZRU6Tf/21El+533
+    =81be
+    -----END PGP PUBLIC KEY BLOCK-----
+    `
 
 
 }
