@@ -1,6 +1,6 @@
 module.exports = {
     mo: `mo`,
-    Partner_CodeN: 'PMNN98',
+    Partner_CodeN: 'MtcwLbASeIXVnKurQCHrDCmsTEsBD7rQ44wHsEWjWtl8kBn8d1EmKEIzddNjt3yplnwRIpIZw0TXT3nR',
     Partner_CodeQ: 'MPB1230953386',
     Security_key: 'H8PIBP9MPMOM',
 

@@ -6,3 +6,4 @@ require('../models/Staff');
 require('../models/Transaction');
 require('../models/TypeTransaction');
 require('../models/User');
+require('../models/SaveSign');

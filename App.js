@@ -7,10 +7,13 @@ const keys = require('./config/key');
 const bodyParser = require('body-parser');
 const passport = require('passport');
 const mongoose = require('mongoose');
+var cors = require('cors')
+
 mongoose.connect(keys.mongoURI,
     { useNewUrlParser: true, useUnifiedTopology: true, 'useCreateIndex': true });
 var app = express();
-app.use(express.json())
+app.use(express.json());
+app.use(cors());
 app.use(logger('dev'));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -28,6 +31,7 @@ app.use((error, req, res, next) => {
     // console.log(1)
     res.status(600).json(error);
 })
+
 
 app.listen(5000, () => {
     console.log('Open at http://localhost:5000');
