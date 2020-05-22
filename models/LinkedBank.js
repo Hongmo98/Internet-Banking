@@ -1,10 +1,12 @@
-const mongoose= require('mongoose');
-const {Schema}= mongoose;
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const linkedBankSchema=({
-    // not finished
-    name: String, 
-    codeBank: String 
+const linkedBankSchema = ({
+
+    nameBank: String,
+    codeBank: String,
+    secretKey: String,
+    email: String,
 })
 
-mongoose.model('linkedBank',linkedBankSchema);
+mongoose.model('linkedBank', linkedBankSchema);
