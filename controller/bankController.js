@@ -6,7 +6,6 @@ const bankAccount = mongoose.model("bankAccount");
 const transaction = mongoose.model("transaction");
 const linkedBank = mongoose.model("linkedBank");
 const saveSign = mongoose.model("saveSign");
-const partner = require('./../config/partner');
 const ObjectId = mongoose.Types.ObjectId;
 
 module.exports = {
@@ -17,9 +16,9 @@ module.exports = {
         let timeStamp = Date.now()
         console.log("time:", timeStamp);
 
-        let sig = account + partner.Security_key + req.headers['headerts'];
+        let sig = account + process.env.SECRET_KEY + req.headers['headerts'];
 
-        if (req.headers['partnercode'] === partner.Partner_codeN || req.headers['partnercode'] === partner.Partner_CodeQ) {
+        if (req.headers['partnercode'] === process.env.PGP || req.headers['partnercode'] === process.RSA) {
 
             let time = +req.headers['headerts'].toString() + 60000;
             if (+time > +timeStamp) {
@@ -68,9 +67,9 @@ module.exports = {
 
 
         let timeStamp = Date.now()
-        let sig = accountReceiver + partner.Security_key + req.headers['headerts'];
+        let sig = accountReceiver + process.env.SECRET_KEY + req.headers['headerts'];
 
-        if (req.headers['partnercode'] === partner.Partner_codePGP || req.headers['partnercode'] === partner.partnercodeRSA) {
+        if (req.headers['partnercode'] === process.env.PGP || req.headers['partnercode'] === process.env.RSA) {
 
             let time = +req.headers['headerts'] + 60000;
 
@@ -80,8 +79,8 @@ module.exports = {
                     try {
                         let connectBank = await linkedBank.findOne({ partnerMe: req.headers['partnercode'] });
 
-                        const { keys: [privateKey] } = await openpgp.key.readArmored(partner.privatebank);
-                        await privateKey.decrypt(partner.passphrase);
+                        const { keys: [privateKey] } = await openpgp.key.readArmored(process.env.PRIVATEKEY);
+                        await privateKey.decrypt(PASSPHRASE);
 
                         const verified = await openpgp.verify({
                             message: openpgp.cleartext.fromText('Nap tien '),
