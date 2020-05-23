@@ -7,7 +7,6 @@
     "node": "12.10.0"
   },
   "scripts": {
-   
     "start": "node app.js"
   },
   "repository": {
@@ -32,11 +31,15 @@
     "express": "^4.17.1",
     "express-async-errors": "^3.1.1",
     "http-error": "0.0.6",
+    "module_name": "^1.0.0",
     "mongoose": "^5.9.14",
     "morgan": "^1.10.0",
     "nodemon": "^2.0.4",
     "openpgp": "^4.10.4",
     "passport": "^0.4.1",
     "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.5"
   }
 }
