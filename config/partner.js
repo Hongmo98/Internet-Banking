@@ -1,7 +1,7 @@
 module.exports = {
 
     Partner_codePGP: 'MtcwLbASeIXVnKurQCHrDCmsTEsBD7rQ44wHsEWjWtl8kBn8d1EmKEIzddNjt3yplnwRIpIZw0TXT3nR',
-    partnercodeRSA: 'j7cm6Y3z53uhuMS5n8ZHTLZjPoLV4wKSwVUGWi3xFvHwFPR5ULow1AfpffBdNVpW1CGyrPakuF93OMB7',
+    partner_codeRSA: 'j7cm6Y3z53uhuMS5n8ZHTLZjPoLV4wKSwVUGWi3xFvHwFPR5ULow1AfpffBdNVpW1CGyrPakuF93OMB7',
     Name: 'MPB bank',
     Security_key: 'H8PIBP9MPMOM',
 
