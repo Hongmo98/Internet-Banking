@@ -8,3 +8,4 @@ require('../models/TypeTransaction');
 require('../models/User');
 require('../models/SaveSign');
 require('../models/LinkedBank');
+require('../models/Information');

@@ -1,9 +1,9 @@
-const mongoose= require('mongoose');
-const {Schema}= mongoose;
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const bankSchema=({
+const bankSchema = ({
     name: String,
     codeBank: String
 })
 
-mongoose.model('bank',bankSchema);
+mongoose.model('bank', bankSchema);

@@ -32,10 +32,11 @@ app.use((req, res, next) => {
 app.use((error, req, res, next) => {
 
     const statusCode = error.status || 500
+    // console.log("mo");
     res.status(statusCode).json(error);
 })
 
 
-app.listen(process.env.PORT || 3000, () => {
+app.listen(process.env.PORT || 5000, () => {
     console.log('Open at http://localhost:5000');
 })
