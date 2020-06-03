@@ -8,7 +8,12 @@ var bcrypt = require("bcrypt");
 var jwt = require('jsonwebtoken');
 const config = require('./../config/key');
 const passport = require('passport');
+const ObjectId = mongoose.Types.ObjectId;
 var randToken = require('rand-token');
+const mailer = require("../utils/Mailer");
+const otp = require("../utils/otp");
+// var Recaptcha = require('express-recaptcha').RecaptchaV3;
+// var recaptcha = new Recaptcha('6LdRWP8UAAAAAARZkcNKlpokIu-Bl4O0dyyqcGS9', '6LdRWP8UAAAAAIKjOpocx34nq-3R6nURnsiaY5c7');
 module.exports = {
 
     login: async (req, res, next) => {
@@ -70,16 +75,18 @@ module.exports = {
 
     },
 
-
     registerAccount: async (req, res, next) => {
 
         // {
-        //     "fullName": "nguyen thi hong mo",
-        //         "email": "hongmo241198@gmail.com",
+        //     "fullName": "vu han linh",
+        //         "email": "hanlinh010198@gmail.com",
         //             "phone": "0352349848",
-        //                 "password": "nguyen thi hong mo"
+        //                 "password": "vu han linh"
         // }
-
+        // {
+        //     "email": "hongmo241198@gmail.com",
+        //         "password": "nguyen thi hong mo"
+        // }
         let { fullName, email, phone, password } = req.body;
         let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 
@@ -87,7 +94,7 @@ module.exports = {
 
             throw createError(422, "incorrect Email or password little than 3 characters");
             return;
-        } console.log("mo:", req.body);
+        }
 
         if (typeof fullName === undefined || typeof password === undefined
             || typeof email === undefined || typeof phone === undefined) {
@@ -101,55 +108,33 @@ module.exports = {
         let hashPass = bcrypt.hashSync(fullName, 10)
 
         userFind = await bankAccount.findOne({ email: email });
-        console.log("mo:", userFind);
+
         if (userFind) {
             throw createError(409, 'Email already exist');
         }
         let saveLoginUser = new user({
             email: email,
-            hashPassword: hashPass
+            hashPassword: hashPass,
+            role: "customer"
         })
         await saveLoginUser.save();
-        console.log(saveLoginUser);
+
         let newUser = new bankAccount({
+            userId: saveLoginUser.id,
             accountName: fullName,
             phone: phone,
             accountNumber: accountNumber,
             email: email,
+            currentBalance: 0,
+            typeAccount: "Credit",
         });
 
 
         await newUser.save();
         console.log(newUser);
         let objUser = { newUser, saveLoginUser }
-        console.log("test", objUser);
-        // passport.authenticate("local", function (err, user, info) {
-        //     if (err) {
-        //         return next(err);
-        //         console.log("1:", err)
-        //     }
-        //     if (!user) {
-        //         return next({ error: { message: info.message, code: 620 } });
-        //         console.log("2:", error)
-        //     }
 
-        //     req.logIn(user._id, function (err) {
-
-        //         if (err) {
-        //             return next(err);
-        //         }
-        //         console.log("3:", err)
         return res.status(200).json({ result: objUser });
-        //     });
-        // })(req, res, next);
-
-        // } catch (err) {
-        //     next(err);
-        //     return;
-        // }
-
-
-
     },
 
     refreshToken: async (req, res, next) => {
@@ -179,11 +164,150 @@ module.exports = {
             })
 
 
-    }
+    },
+    getUserCurrent: async (req, res, next) => {
+        let userId = req.tokePayload.userId;
+        try {
+            let u = await bankAccount.findOne({ userId: ObjectId(userId) });
+
+            res.status(200).json({ result: u });
+        } catch (err) {
+            next(err);
+        }
+    },
+    updatePassword: async (req, res, next) => {
+        if (
+            typeof req.body.oldPassword === "undefined" ||
+            typeof req.body.newPassword === "undefined"
+        ) {
+            next({ error: { message: "Invalid data", code: 422 } });
+            return;
+        }
+        let id = req.tokePayload.userId;
+        let { oldPassword, newPassword } = req.body;
+        let currentUser = null;
+        try {
+            currentUser = await user.findById(id);
+        } catch (err) {
+            next(err);
+            return;
+        }
+
+        if (currentUser == null) {
+            next({ error: { message: "Invalid data", code: 422 } });
+            return;
+        }
+
+        if (!bcrypt.compareSync(oldPassword, currentUser.hashPassword)) {
+            next({ error: { message: "Current password is wrong", code: 423 } });
+            return;
+        }
+        currentUser.hashPassword = bcrypt.hashSync(newPassword, 10);
+        try {
+            await currentUser.save();
+            res.status(200).json({ result: true });
+        } catch (err) {
+            next(err);
+        }
+
+
+
+    },
+    requestForgotPassword: async (req, res, next) => {
+        if (typeof req.body.email === "undefined") {
+            next({ error: { message: "Invalid data", code: 422 } });
+            return;
+        }
+
+        let email = req.body.email;
+        let currentUser = null;
+        console.log(email);
+
+        try {
+            currentUser = await user.findOne({ email: email });
+            console.log(currentUser);
+        } catch (err) {
+            next(err);
+            return;
+        }
+
+        if (currentUser == null) {
+            next({ error: { message: "Invalid data", code: 422 } });
+        }
+
+        let token = otp.generateOTP();
+
+        mailer.sentMailer("mpbank.dack@gmail.com", { email }, "confirm", token)
+            .then(async (json) => {
+
+                currentUser.TOKEN = token;
+                console.log(json);
+                try {
+                    await currentUser.save();
+                    console.log(currentUser)
+                } catch (err) {
+                    next(err);
+                    return;
+                }
+
+                res.status(200).json({ result: true });
+            })
+            .catch((err) => {
+                next(err);
+                return;
+            });
+    },
+    forgotPassword: async (req, res, next) => {
+        if (
+            typeof req.body.email === "undefined" ||
+            typeof req.body.otp === "undefined" ||
+            typeof req.body.newPassword === "undefined"
+        ) {
+            next({ error: { message: "Invalid data", code: 402 } });
+            return;
+        }
+        //  {
+        //      "email":"hanlinh010198@gmail.com",
+        //      "otp":"1234",
+        //      "newPassword":"hongmo234"
+
+        //  }
+        let { email, otp, newPassword } = req.body;
+        let currentUser = null;
+
+        try {
+            currentUser = await user.findOne({ email: email });
+        } catch (err) {
+            next(err);
+            return;
+        }
+
+        if (currentUser == null) {
+            next({ error: { message: "Invalid data", code: 422 } });
+            return;
+        }
+
+        if (currentUser.TOKEN != otp) {
+            next({ error: { message: "OTP fail", code: 422 } });
+            return;
+        }
+
+        currentUser.hashPassword = bcrypt.hashSync(newPassword, 10);
+        currentUser.TOKEN = "";
+
+
+        try {
+            await currentUser.save();
+            res.status(200).json({ result: true });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+
+
+
 }
-
-
-
 
 const generateAccessToken = (userId, role) => {
 

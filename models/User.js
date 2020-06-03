@@ -12,8 +12,8 @@ const userSchema = new Schema({
     // avatar: { type: String, default: '/avata.png'},
     username: String,
     hashPassword: String,
-    idBankAccount: Schema.Types.ObjectId,
     role: { type: String },
+    TOKEN: String,
 })
 
 mongoose.model('user', userSchema);

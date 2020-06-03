@@ -31,8 +31,8 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 require('./middlewares/loadMongoose');
-require('./utils/passport');
-const verify = require('./middlewares/authMiddlewares');
+
+
 
 app.use('/user', require('./routes/bankRoutes'));
 app.use('/auth', require('./routes/authRoutes'));

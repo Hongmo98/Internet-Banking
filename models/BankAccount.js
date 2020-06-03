@@ -11,7 +11,10 @@ const bankAccountSchema = new Schema({
     email: String,
     phone: String,
     avatar: { type: String, default: '/avata.png' },
+    typeAccount: String,
     hashPassword: String,
+    userId: Schema.Types.ObjectId,
+
 })
 
 module.exports = mongoose.model('bankAccount', bankAccountSchema);
