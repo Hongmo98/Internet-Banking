@@ -316,7 +316,7 @@ const generateAccessToken = (userId, role) => {
         role
     }
     const accessToken = jwt.sign(payload, config.SECRET_KEY, {
-        expiresIn: '10m'
+        // expiresIn: '10m'
     })
     return accessToken;
 }

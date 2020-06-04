@@ -1,4 +1,3 @@
-require('../models/Bank');
 require('../models/BankAccount');
 require('../models/DeptReminder');
 require('../models/HistoryBalance');
@@ -10,3 +9,4 @@ require('../models/SaveSign');
 require('../models/LinkedBank');
 require('../models/Information');
 require('../models/UserRefeshToken');
+require('../models/receiverInfor');
