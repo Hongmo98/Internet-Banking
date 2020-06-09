@@ -218,10 +218,11 @@ module.exports = {
         }
 
     },
-    receiverTransfer: async (req, res, nex) => {
+    receiverTransfer: async (req, res, next) => {
         let { userId } = req.tokePayload;
         try {
-            let receiver = await receiverInfo.find({ userId: ObjectId(userId) });
+            let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false });
+
 
             res.status(200).json({ result: receiver });
 
@@ -232,7 +233,44 @@ module.exports = {
         }
 
 
+    },
+    deleteReceiver: async (req, res, next) => {
+        if (typeof req.body.receiverId === 'undefined') {
+            next({ error: { message: "Invalid data", code: 402 } });
+            return;
+        }
+
+        let { receiverId } = req.body;
+        let { userId } = req.tokePayload;
+
+        try {
+            let receiver = await receiverInfo.findById({ id: receiverId });
+            receiverInfo.isDelete = true;
+
+            await receiver.save();
+            return res.status(200).json({ result: true });
+        } catch (err) {
+            next(err);
+        }
+    },
+    updateReceiver: async (req, res, next) => {
+        let { userId } = req.tokePayload;
+        // numberAccount: String,
+        // nameAccount: String,
+        // idBank: Schema.Types.ObjectId,
+        // createAt: { type: Date, default: Date.now },
+        // userId: Schema.Types.ObjectId,
+        // isDelete: { type: Boolean, default: false },
+    
+    
+        let {numberAccount,nameAccount,idBank}= req.body;
+
+
+
     }
+
+
+
 }
 
 

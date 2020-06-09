@@ -17,16 +17,18 @@ const otp = require("../utils/otp");
 module.exports = {
 
     login: async (req, res, next) => {
-        let { email, password } = req.body;
-
-        let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
-
-        if (!regex.test(email) || password.length < 3) {
+        // {
+        //     "username": "1591614021893",
+        //     "password": "3AIV29nM"
+        // }
+        let { username, password } = req.body;
+        console.log()
+        if (password.length < 8) {
 
             throw createError(422, "incorrect Email or password little than 3 characters");
             return;
         }
-        if (typeof email === undefined || typeof password === undefined) {
+        if (typeof username === undefined || typeof password === undefined) {
 
             throw createError(602, 'Invalid value');
         }
@@ -34,7 +36,8 @@ module.exports = {
         const FRS = 80;
 
         try {
-            userFind = await user.findOne({ email: email });
+            userFind = await user.findOne({ username: username });
+            console.log(userFind);
             if (!userFind) {
                 throw createError(409, 'Email already exist');
             }
@@ -54,11 +57,13 @@ module.exports = {
                     userId: userId
                 })
                 await refresh.save();
+                let name = userFind.fullName;
 
                 const accessToken = generateAccessToken(userId, role)
                 res.status(200).json({
                     accessToken,
-                    refreshToken
+                    refreshToken,
+                    name
                 });
 
             }
@@ -74,6 +79,21 @@ module.exports = {
 
 
     },
+    recaptchaGoogle: async (req, res, next) => {
+        if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null) {
+            return res.json({ "responseCode": 1, "responseDesc": "Please select captcha" });
+        }
+        var secretKey = '6LdRWP8UAAAAAIKjOpocx34nq-3R6nURnsiaY5c7';
+        var verificationUrl = "https://www.google.com/recaptcha/api/siteverify?secret=" + secretKey + "&response=" + req.body['g-recaptcha-response'] + "&remoteip=" + req.connection.remoteAddress
+        request(verificationUrl, function (error, response, body) {
+            body = JSON.parse(body);
+            if (body.success !== undefined && !body.success) {
+                return res.json({ "responseCode": 1, "responseDesc": "Failed captcha verification" });
+            }
+            res.json({ "responseCode": 0, "responseDesc": "Sucess" });
+        });
+    },
+
 
     registerAccount: async (req, res, next) => {
 
@@ -82,42 +102,50 @@ module.exports = {
         //         "email": "hanlinh010198@gmail.com",
         //             "phone": "0352349848",
         //                 "password": "vu han linh"
-        // }
-        // {
+        // 
+        // 
         //     "email": "hongmo241198@gmail.com",
         //         "password": "nguyen thi hong mo"
-        // }
-        let { fullName, email, phone, password } = req.body;
+        // 
+        let { fullName, email, phone } = req.body;
+
         let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 
-        if (!regex.test(email) || password.length < 3) {
+        if (!regex.test(email)) {
 
             throw createError(422, "incorrect Email or password little than 3 characters");
             return;
         }
 
-        if (typeof fullName === undefined || typeof password === undefined
-            || typeof email === undefined || typeof phone === undefined) {
+        if (typeof fullName === undefined ||
+            typeof email === undefined || typeof phone === undefined) {
 
             throw createError(602, 'Invalid value');
         }
         let userFind = null;
-        let date = Date.now();
-        let number = Math.random() * 1612392;
-        let accountNumber = parseInt(date + number);
-        let hashPass = bcrypt.hashSync(fullName, 10)
+        let accountNumber = generateAccountNumber();
+        console.log(accountNumber)
+        let userName = generateUserName();
+        console.log(userName);
+        let password = generatePassword();
+        console.log(password);
+        let hashPass = bcrypt.hashSync(password, 10);
+        console.log(hashPass);
 
         userFind = await bankAccount.findOne({ email: email });
 
+        console.log(userFind);
         if (userFind) {
             throw createError(409, 'Email already exist');
         }
         let saveLoginUser = new user({
             email: email,
+            username: userName,
             hashPassword: hashPass,
-            role: "customer"
+
         })
         await saveLoginUser.save();
+        console.log(saveLoginUser);
 
         let newUser = new bankAccount({
             userId: saveLoginUser.id,
@@ -125,8 +153,9 @@ module.exports = {
             phone: phone,
             accountNumber: accountNumber,
             email: email,
+            hashPassword: password,
             currentBalance: 0,
-            typeAccount: "Credit",
+
         });
 
 
@@ -136,6 +165,10 @@ module.exports = {
 
         return res.status(200).json({ result: objUser });
     },
+    // logout: async (req, res) => {
+    //     req.logout();
+    //     res.status(200).json({ result: true });
+    // },
 
     refreshToken: async (req, res, next) => {
 
@@ -166,14 +199,43 @@ module.exports = {
 
     },
     getUserCurrent: async (req, res, next) => {
-        let userId = req.tokePayload.userId;
-        try {
-            let u = await bankAccount.findOne({ userId: ObjectId(userId) });
+        let id = req.tokePayload.userId;
 
+        console.log(id);
+        try {
+            let u = await user.findById({ _id: id });
+            console.log(u);
             res.status(200).json({ result: u });
         } catch (err) {
             next(err);
         }
+    },
+    getInfo: async (req, res, next) => {
+        let { userId, role } = req.tokePayload;
+        let { accountNumber, typeAccount } = req.query;
+        if (
+            typeof req.query.accountNumber === "undefined"
+
+
+        ) {
+            next({ error: { message: "Invalid data", code: 402 } });
+            return;
+
+        }
+        console.log(req.query);
+        let userCurrent = null;
+        try {
+
+            userCurrent = await bankAccount.findOne({ userId: ObjectId(userId), typeAccount: typeAccount, accountNumber: accountNumber });
+            if (userCurrent === null) {
+                next({ error: { message: "not found user", code: 402 } });
+                return;
+            }
+            res.status(200).json({ result: userCurrent });
+        } catch (err) {
+            next(err);
+        }
+
     },
     updatePassword: async (req, res, next) => {
         if (
@@ -218,13 +280,16 @@ module.exports = {
             next({ error: { message: "Invalid data", code: 422 } });
             return;
         }
-
-        let email = req.body.email;
+        // {
+        //     "email":"hanlinh010198@gmail.com",
+        //     "username":"1591614021893"
+        // }
+        let { email, username } = req.body;
         let currentUser = null;
         console.log(email);
 
         try {
-            currentUser = await user.findOne({ email: email });
+            currentUser = await user.findOne({ email: email, username: username });
             console.log(currentUser);
         } catch (err) {
             next(err);
@@ -237,7 +302,7 @@ module.exports = {
 
         let token = otp.generateOTP();
 
-        mailer.sentMailer("mpbank.dack@gmail.com", { email }, "confirm", token)
+        mailer.sentMailer("mpbank.dack@gmail.com", { email }, "đổi mật khẩu", token)
             .then(async (json) => {
 
                 currentUser.TOKEN = token;
@@ -261,22 +326,24 @@ module.exports = {
         if (
             typeof req.body.email === "undefined" ||
             typeof req.body.otp === "undefined" ||
-            typeof req.body.newPassword === "undefined"
+            typeof req.body.newPassword === "undefined" ||
+            typeof req.body.username === "undefined"
         ) {
             next({ error: { message: "Invalid data", code: 402 } });
             return;
         }
         //  {
         //      "email":"hanlinh010198@gmail.com",
-        //      "otp":"1234",
-        //      "newPassword":"hongmo234"
+        //      "otp":"372976",
+        //      "newPassword":"hongmo234",
+        //         "username":"1591614021893 "
 
         //  }
-        let { email, otp, newPassword } = req.body;
+        let { email, otp, newPassword, username } = req.body;
         let currentUser = null;
 
         try {
-            currentUser = await user.findOne({ email: email });
+            currentUser = await user.findOne({ email: email, username: username });
         } catch (err) {
             next(err);
             return;
@@ -303,10 +370,36 @@ module.exports = {
             next(err);
         }
     },
+    getAccountNumber: async (req, res, next) => {
+
+        let { userId, role } = req.tokePayload;
+
+        let { typeAccount } = req.query;
+        console.log(req.query);
+        if (
+            typeof req.query.typeAccount === "undefined"
+
+        ) {
+            next({ error: { message: "Invalid data", code: 402 } });
+            return;
+
+        }
+        let userAccount = null;
+        try {
+            userAccount = await bankAccount.findOne({ userId: ObjectId(userId), typeAccount: typeAccount })
+            if (userAccount === null) {
+                next({ error: { message: "not found user", code: 402 } });
+                return;
+            }
+
+            res.status(200).json({ result: userAccount })
 
 
+        } catch (err) {
+            next(err);
+        }
 
-
+    }
 }
 
 const generateAccessToken = (userId, role) => {
@@ -319,5 +412,6 @@ const generateAccessToken = (userId, role) => {
         // expiresIn: '10m'
     })
     return accessToken;
-}
+};
+
 

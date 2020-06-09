@@ -12,4 +12,8 @@ router.post('/transferPgp', bankController.linkBankPartnerTransferPgp)
 router.get('/accountRsa', bankController.linkBankPartnerRsa);
 router.post('/transferRsa', bankController.transferRsa);
 
+
+/// chuyen khoan 
+// router.post('/linkBankAccount', bankController.linkBankAccount);
+
 module.exports = router;

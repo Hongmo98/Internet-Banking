@@ -15,11 +15,14 @@ exports.sentMailer = function (from1, { email }, subject, content) {
                 pass: 'mpbank.dack2020'
             },
         });
-
+        let test = `
+        Ngân hàng TMCP Ngoại thương Việt Nam trân trọng thông báo Quý khách ma ${subject} OTP
+      để xác nhận  
+        `
         let mail = {
             from: from1,
             to: email,
-            subject: subject,
+            subject: test,
             html: content
         };
 

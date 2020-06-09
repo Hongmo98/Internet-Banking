@@ -203,7 +203,6 @@ module.exports = {
 
     linkBankPartnerTransferPgp: async (req, res, next) => {
 
-
         const partner_code = req.headers["partner_code"];
         let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
 
@@ -260,7 +259,28 @@ module.exports = {
                         });
                 })();
             }
+            else {
+                const request = (data, signed_data, _headers, res) =>
+                    axios
+                        .post(
+                            "https://nklbank.herokuapp.com/api/partnerbank/request",
+                            { data, signed_data },
+                            { headers: _headers }
+                        )
+                        .then(function (response) {
+                            res.status(200).json(response.data);
+                            console.log(response.data);
+                        })
+                        .catch(function (error) {
+                            console.log(error.response);
+                            res.status(error.response.status).send(error.response.data);
+                        });
+                request(data, null, _headers, res);
+            }
+
+
         }
+
         catch (err) {
             next(err);
         }
@@ -341,7 +361,12 @@ module.exports = {
 
     },
 
+    // linkBankAccount: async (req, res, next) => {
 
+    //     let{accountNumber ,idBank}=req.body;
+
+
+    // },
 
 
 

@@ -12,7 +12,7 @@ const userSchema = new Schema({
     // avatar: { type: String, default: '/avata.png'},
     username: String,
     hashPassword: String,
-    role: { type: String },
+    role: { type: String, "index": "text", default: "CUSTOMER" },
     TOKEN: String,
 })
 

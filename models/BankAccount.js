@@ -11,7 +11,7 @@ const bankAccountSchema = new Schema({
     email: String,
     phone: String,
     avatar: { type: String, default: '/avata.png' },
-    typeAccount: String,
+    typeAccount: { type: String, "index": "text", default: "Credit" },
     hashPassword: String,
     userId: Schema.Types.ObjectId,
 
