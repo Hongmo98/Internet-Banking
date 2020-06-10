@@ -17,7 +17,16 @@ const otp = require("../utils/otp");
 module.exports = {
     requestReceiver: async (req, res, next) => {
         let { userId } = req.tokePayload;
-        let { receiverNumber } = req.query;
+
+        if (
+            typeof req.body.receiver === "undefined" ||
+            typeof req.body.amountMoney === "undefined" ||
+            typeof req.body.content === "undefined" ||
+            typeof req.body.typeSend === "undefined"
+
+        ) {
+            next({ error: { message: "Invalid data", code: 422 } });
+        }
 
         try {
             let sender = await bankAccount.findOne({ userId });
@@ -26,16 +35,35 @@ module.exports = {
                 next({ error: { message: "Invalid data", code: 422 } });
                 return;
             }
-            let userReceiver = await bankAccount.findOne({ accountNumber: receiverNumber })
+            let { receiver, amountMoney, content, typeSend } = req.body;
+            let currentUser = null;
+            if (typeSend === '+' || typeSend === '-') {
 
-            if (userReceiver == null) {
-                next({ error: { message: "Invalid data", code: 422 } });
+                let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
+                if (userReceiver === null) {
+                    next({ error: { message: "Not found account number", code: 422 } });
+                    return;
+                }
+
+                let newTransaction = new transaction({
+                    bankAccountSender: userSender.accountNumber,
+                    bankAccountReceiver: receiver,
+                    amount: amountMoney,
+                    content: content,
+                    typeSend: typeSend,
+                    typeTransaction: "TRANSFER",
+                    fee: 2200,
+                    CodeOTP: "",
+                    status: "PROGRESS"
+
+                })
+                await newTransaction.save();
+                res.status(200).json({ result: newTransaction });
+            } else {
+                next({ error: { message: "type  cannot  suit", code: 422 } });
                 return;
             }
-            let nameReceiver = userReceiver.accountName;
-            let receiverInfo = { nameReceiver, receiverNumber, sender };
 
-            res.status(200).json({ result: receiverInfo })
         } catch (err) {
             next(err);
         }
@@ -50,6 +78,7 @@ module.exports = {
         if (userSender === null) {
             next({ error: { message: "Not found account number", code: 422 } });
         }
+        let sender = userSender.bankAccountSender;
 
         if (
             typeof req.body.receiver === "undefined" ||
@@ -67,35 +96,23 @@ module.exports = {
         //     "content" :"t chuyển cho m nè hehe",
         //     "typeSend" :"+",
         // }
-        let { receiver, amountMoney, content, typeSend } = req.body;
+        let { idTransaction } = req.body;
         let currentUser = null;
         if (typeSend === '+' || typeSend === '-') {
 
-            let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
+            let userReceiver = await transaction.findById({
+                id: idTransaction
+            });
             if (userReceiver === null) {
                 next({ error: { message: "Not found account number", code: 422 } });
                 return;
             }
 
-
             let token = otp.generateOTP();
 
             mailer.sentMailer("mpbank.dack@gmail.com", { email: userSender.email }, "confirm", token)
                 .then(async (json) => {
-
-                    let newTransaction = new transaction({
-                        bankAccountSender: userSender.accountNumber,
-                        bankAccountReceiver: receiver,
-                        amount: amountMoney,
-                        content: content,
-                        typeSend: typeSend,
-                        typeTransaction: "TRANSFER",
-                        fee: 2200,
-                        CodeOTP: token,
-                        status: "PROGRESS"
-
-                    })
-
+                    newTransaction.CodeOTP = token;
 
                     console.log(json);
                     try {
@@ -261,9 +278,9 @@ module.exports = {
         // createAt: { type: Date, default: Date.now },
         // userId: Schema.Types.ObjectId,
         // isDelete: { type: Boolean, default: false },
-    
-    
-        let {numberAccount,nameAccount,idBank}= req.body;
+
+
+        let { numberAccount, nameAccount, idBank } = req.body;
 
 
 

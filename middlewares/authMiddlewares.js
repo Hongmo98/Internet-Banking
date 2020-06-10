@@ -5,7 +5,7 @@ const config = require('./../config/key');
 module.exports = function verify(req, res, next) {
 
     const token = req.headers['x-access-token'];
-    console.log("token", token);
+    console.log("token", token  );
     if (token) {
         jwt.verify(token, config.SECRET_KEY, function (err, payload) {
             if (err)

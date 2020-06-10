@@ -1,5 +1,7 @@
 var express = require('express');
 var router = express.Router();
+const verify = require('../middlewares/authMiddlewares');
+var router = express.Router();
 
 
 const bankController = require('../controller/bankController')
@@ -14,6 +16,6 @@ router.post('/transferRsa', bankController.transferRsa);
 
 
 /// chuyen khoan 
-// router.post('/linkBankAccount', bankController.linkBankAccount);
+router.post('/linkBankAccount', verify, bankController.linkBankAccount);
 
 module.exports = router;

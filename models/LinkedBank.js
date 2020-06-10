@@ -6,6 +6,7 @@ const linkedBankSchema = ({
     codeBank: String,
     secretKey: String,
     public: String,
+    partnerCode: String,
     partnerMe: String,
 })
 

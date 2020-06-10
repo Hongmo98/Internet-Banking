@@ -297,9 +297,6 @@ module.exports = {
 
         let timestamp = moment().unix();
         console.log(timestamp);
-
-
-
         let _data = JSON.stringify(data, null, 2);
         console.log(_data);
         console.log(crypto.createHash('sha256').update(timestamp + _data + config.SECRET_KEY).digest('hex'));
@@ -361,12 +358,94 @@ module.exports = {
 
     },
 
-    // linkBankAccount: async (req, res, next) => {
+    linkBankAccount: async (req, res, next) => {
+        let { userId, role } = req.tokePayload;
 
-    //     let{accountNumber ,idBank}=req.body;
+        let sender = await bankAccount.findOne({ userId });
+
+        if (sender == null) {
+            next({ error: { message: "Invalid data", code: 422 } });
+            return;
+        }
+
+        const partner_code = req.headers["partner_code"];
+        let { nameBank } = req.body;
+        if (nameBank === "NKLBank") {
+            let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
+
+            const timestamp = moment().toString();
+            const data = req.body;
+            const secret_key = config.SECRET_KEY;
+            console.log(data);
+            const hash = CryptoJS.AES.encrypt(
+                JSON.stringify({ data, timestamp, secret_key }),
+                secret_key
+            ).toString();
+
+            const _headers = {
+                partner_code: partner_code,
+                timestamp: timestamp,
+                api_signature: hash,
+            };
+
+            try {
+
+                const request = (data, signed_data, _headers, res) =>
+                    axios
+                        .post(
+                            "https://nklbank.herokuapp.com/api/partnerbank/request",
+                            { data, signed_data },
+                            { headers: _headers }
+                        )
+                        .then(function (response) {
+                            res.status(200).json(response.data);
+                            console.log(response.data);
+                        })
+                        .catch(function (error) {
+                            console.log(error.response);
+                            res.status(error.response.status).send(error.response.data);
+                        });
+                request(data, null, _headers, res);
 
 
-    // },
+            }
+
+            catch (err) {
+                next(err);
+            }
+        }
+        else {
+            let { account_number } = req.body;
+
+            let data = { account_number };
+
+            console.log(data);
+
+            let timestamp = moment().unix();
+            console.log(timestamp);
+            let _data = JSON.stringify(data, null, 2);
+            console.log(_data);
+            console.log(crypto.createHash('sha256').update(timestamp + _data + config.SECRET_KEY).digest('hex'));
+            axios({
+                method: 'get',
+                url: '/api/v1/linked/account',
+                baseURL: 'https://s2q-ibanking.herokuapp.com',
+                headers: { timestamp, security_key: config.SECRET_KEY },
+                data: {
+                    data,
+                    hash: crypto.createHash('sha256').update(timestamp + _data + config.SECRET_KEY).digest('hex')
+                }
+            }).then(function (response) {
+                res.status(200).json(response.data);
+                console.log(response);
+            }).catch(err => res.send(err));
+
+        }
+
+    },
+    transferBankAccount: async (req, res, next) => {
+
+    }
 
 
 
