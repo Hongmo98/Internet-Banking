@@ -6,7 +6,6 @@ exports.sentMailer = function (from1, { email }, subject, content) {
             //service: 'Gmail',
             host: 'smtp.gmail.com',
             port: 465,
-
             secure: true,
 
             auth: {
@@ -16,13 +15,13 @@ exports.sentMailer = function (from1, { email }, subject, content) {
             },
         });
         let test = `
-        Ngân hàng TMCP Ngoại thương Việt Nam trân trọng thông báo Quý khách ma ${subject} OTP
-      để xác nhận  
-        `
+            Ngân hàng MP bank trân trọng thông báo Quý khách ma ${subject} OTP
+          để xác nhận  thời gian hết hạn trong 10 phút 
+            `
         let mail = {
             from: from1,
             to: email,
-            subject: test,
+            subject: subject,
             html: content
         };
 
@@ -35,7 +34,6 @@ exports.sentMailer = function (from1, { email }, subject, content) {
         });
 
         transporter.sendMail(mail, function (error, info) {
-
             if (error) {
                 reject(error);
             } else {

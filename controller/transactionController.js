@@ -31,22 +31,27 @@ module.exports = {
         try {
             let sender = await bankAccount.findOne({ userId });
 
+
             if (sender == null) {
                 next({ error: { message: "Invalid data", code: 422 } });
                 return;
             }
+            let accountSender = sender.accountNumber;
             let { receiver, amountMoney, content, typeSend } = req.body;
+            console.log(req.body);
             let currentUser = null;
             if (typeSend === '+' || typeSend === '-') {
 
                 let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
+                console.log(userReceiver);
                 if (userReceiver === null) {
                     next({ error: { message: "Not found account number", code: 422 } });
                     return;
                 }
+                let nameReceiver = userReceiver.accountName;
 
                 let newTransaction = new transaction({
-                    bankAccountSender: userSender.accountNumber,
+                    bankAccountSender: accountSender,
                     bankAccountReceiver: receiver,
                     amount: amountMoney,
                     content: content,
@@ -54,11 +59,14 @@ module.exports = {
                     typeTransaction: "TRANSFER",
                     fee: 2200,
                     CodeOTP: "",
-                    status: "PROGRESS"
+                    status: "PROGRESS",
+                    timeOTP: Date.now(),
 
                 })
                 await newTransaction.save();
-                res.status(200).json({ result: newTransaction });
+
+                let data = { newTransaction, sender, nameReceiver }
+                res.status(200).json({ result: data });
             } else {
                 next({ error: { message: "type  cannot  suit", code: 422 } });
                 return;
@@ -70,7 +78,12 @@ module.exports = {
 
 
     },
-
+    // {
+    //     "receiver": "02410001612496 ",
+    //     "amountMoney":200000,
+    //     "content" :"t chuyển cho m nè hehe",
+    //     "typeSend" :"+",
+    // }    
     transferInternal: async (req, res, next) => {
 
         let { userId } = req.tokePayload;
@@ -79,60 +92,55 @@ module.exports = {
             next({ error: { message: "Not found account number", code: 422 } });
         }
         let sender = userSender.bankAccountSender;
+        let email = userSender.email;
+
 
         if (
-            typeof req.body.receiver === "undefined" ||
-            typeof req.body.amountMoney === "undefined" ||
-            typeof req.body.content === "undefined" ||
-            typeof req.body.typeSend === "undefined"
+            typeof req.body.idTransaction === "undefined"
 
         ) {
             next({ error: { message: "Invalid data", code: 422 } });
             return;
         }
-        // {
-        //     "receiver": "02410001612496 ",
-        //     "amountMoney":200000,
-        //     "content" :"t chuyển cho m nè hehe",
-        //     "typeSend" :"+",
-        // }
+
         let { idTransaction } = req.body;
         let currentUser = null;
-        if (typeSend === '+' || typeSend === '-') {
+        console.log(req.body);
+        let userReceiver = await transaction.findById({
+            _id: idTransaction
+        });
+        if (userReceiver === null) {
+            next({ error: { message: "Not found account number", code: 422 } });
+            return;
+        }
+        console.log(userReceiver);
 
-            let userReceiver = await transaction.findById({
-                id: idTransaction
-            });
-            if (userReceiver === null) {
-                next({ error: { message: "Not found account number", code: 422 } });
-                return;
-            }
+        let token = otp.generateOTP();
+        console.log(token);
 
-            let token = otp.generateOTP();
+        let time = Date.now();
+        console.log(time);
 
-            mailer.sentMailer("mpbank.dack@gmail.com", { email: userSender.email }, "confirm", token)
-                .then(async (json) => {
-                    newTransaction.CodeOTP = token;
-
-                    console.log(json);
-                    try {
-                        await newTransaction.save();
-                        console.log(newTransaction)
-                    } catch (err) {
-                        next(err);
-                        return;
-                    }
-
-                    res.status(200).json({ result: newTransaction });
-                })
-                .catch((err) => {
+        mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
+            .then(async (json) => {
+                userReceiver.CodeOTP = token;
+                userReceiver.timeOTP = time;
+                console.log(json);
+                try {
+                    await userReceiver.save();
+                    console.log(userReceiver)
+                } catch (err) {
                     next(err);
                     return;
-                });
+                }
 
+                res.status(200).json({ message: "send otp email " });
+            })
+            .catch((err) => {
+                next(err);
+                return;
+            });
 
-
-        }
     },
     verifyOTP: async (req, res, next) => {
         let { userId } = req.tokePayload;
@@ -145,7 +153,12 @@ module.exports = {
             return;
         }
 
-        let { code, type } = req.body;
+        let { code } = req.body;
+
+        // {
+        //     "code": "527675",
+
+        // }
 
 
         try {
@@ -155,6 +168,13 @@ module.exports = {
                 next({ error: { message: "not code correct", code: 422 } });
                 return;
             }
+            console.log(tran);
+
+            let timeOTP = Date.now();
+            let timestamp = Date.parse(tran.timeOTP) + 600000;
+            console.log("mo", Date.parse(tran.timeOTP));
+            console.log(timeOTP);
+
             let userSender = await bankAccount.findOne({ accountNumber: tran.bankAccountSender });
 
             if (userSender == null) {
@@ -172,7 +192,6 @@ module.exports = {
 
             if (+userSender.currentBalance > service) {
                 if (tran.typeSend === '+') {
-
 
                     userReceiver.currentBalance = +userReceiver.currentBalance + money - feeTransfer;
 
@@ -193,7 +212,7 @@ module.exports = {
                 console.log(tran);
 
                 let pro = { userReceiver, userSender, tran };
-                res.status(200).json({ result: pro, type });
+                res.status(200).json({ result: pros });
 
             } else {
                 next({ error: { message: "current balance isn't to transfer money", code: 422 } });

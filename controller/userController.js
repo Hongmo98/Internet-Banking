@@ -18,16 +18,16 @@ module.exports = {
 
     login: async (req, res, next) => {
         // {
-        //     "username": "1591614021893",
-        //     "password": "3AIV29nM"
-        // }
+        //     "username":"1591679264587",
+        //     "password":"dBkcH2dm"
+        //  }
         let { username, password } = req.body;
         console.log()
-        if (password.length < 8) {
+        // if (password.length < 8) {
 
-            throw createError(422, "incorrect Email or password little than 3 characters");
-            return;
-        }
+        //     throw createError(422, "incorrect Email or password little than 3 characters");
+        //     return;
+        // }
         if (typeof username === undefined || typeof password === undefined) {
 
             throw createError(602, 'Invalid value');
@@ -39,7 +39,7 @@ module.exports = {
             userFind = await user.findOne({ username: username });
             console.log(userFind);
             if (!userFind) {
-                throw createError(409, 'Email already exist');
+                throw createError(409, 'username already exist');
             }
             const userId = userFind.id;
             const role = userFind.role;
@@ -63,7 +63,8 @@ module.exports = {
                 res.status(200).json({
                     accessToken,
                     refreshToken,
-                    name
+                    name,
+                    role
                 });
 
             }

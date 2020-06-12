@@ -11,8 +11,10 @@ const transactionSchema = new Schema({
     // 2 type
     // nguoi nhan tra phi: true 
     // nguoi gui tra phi: false
-    typeSend: String,
+    typeSend: Boolean,
+    nameBank: { type: String, "index": "text", default: "MPBank" },
     CodeOTP: String,
+    timeOTP: { type: Date, default: Date.now },
     typeTransaction: String,
     fee: Number,
     createAt: { type: Date, default: Date.now },
