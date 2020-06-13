@@ -12,5 +12,15 @@ router.post('/verifyOTP', verify, transferController.verifyOTP);
 router.post('/receivers', verify, transferController.saveReceive);
 router.get('/receiver', verify, transferController.receiverTransfer);
 router.post('/receiver', verify, transferController.deleteReceiver);
+router.get('/receiverInformation', verify, transferController.receiverInformation)
 router.post('/updateReceiver', verify, transferController.updateReceiver);
+// remind dept
+
+router.post('/requestDept', verify, transferController.requestDept)
+router.get('notificationDept', verify, transferController.notificationDept)
+
+
+
+
+
 module.exports = router;

@@ -10,6 +10,7 @@ const informationSchema = new Schema({
     password: String,
     linkRSA: String,
     linkPGP: String,
+    partnerRSA: String,
 })
 
 mongoose.model('information', informationSchema);

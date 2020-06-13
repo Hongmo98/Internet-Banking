@@ -87,7 +87,7 @@ module.exports = {
     transactionAccount: async (req, res, next) => {
 
         await openpgp.initWorker({ path: 'openpgp.worker.js' })
-        let { signature, accountReceiver, money } = req.body;
+        let { signature, accountReceiver, money, content, typeSend, fee, nameBank, accountSender } = req.body;
 
         let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
 
@@ -140,9 +140,29 @@ module.exports = {
                                 throw createError(422, 'cannot find account ');
 
                             }
+                            let tranPartner = new transaction({
+                                bankAccountSender: accountSender,
+                                bankAccountReceiver: accountReceiver,
+                                amount: money,
+                                content: content,
+                                typeSend: typeSend,
+                                nameBank: nameBank,
+                                typeTransaction: "GETMONEY",
+                                status: "SUCCESS",
+                                fee: 3300,
 
-                            userReceiver.currentBalance = +userReceiver.currentBalance + +money;
+                            })
+
+                            if (typeSend === true) {
+                                userReceiver.currentBalance = +userReceiver.currentBalance + +money;
+                            }
+                            else {
+                                userReceiver.currentBalance = +userReceiver.currentBalance + +money - fee;
+                            }
+
+
                             await userReceiver.save();
+                            await tranPartner.save();
 
                             const { signature: signatureMBP } = await openpgp.sign({
                                 message: openpgp.cleartext.fromText('Hello, World!'),
@@ -665,50 +685,21 @@ module.exports = {
                     next(err);
                 }
             }
-            if (tran.nameBank === 'S2Q') {
-                // console.log('test', tran);
-                // const transfer = await sendMoney(tran);
-                // console.log("hhe", transfer);
-                let timestamp = moment().unix();
-                // let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
-                // console.log("infoBank", infoBank.linkRSA);
-                let security_key = config.SECRET_KEYRSA;
-                let data = {
-                    source_account: '12345',
-                    destination_account: tran.bankAccountReceiver,
-                    source_bank: 'MPBank',
-                    description: tran.content,
-                    feePayBySender: tran.typeSend,
-                    fee: 3300,
-                    amount: tran.amount
-                };
-                let _data = JSON.stringify(data);
-                console.log("data", data);
+            if (tran.nameBank === 'S2QBank') {
 
-                // create signature
-                // let privateKey = private.replace(/\\n/g, '\n');
-                let signer = crypto.createSign('sha256');
-                signer.update(_data);
-                let signature = signer.sign(private, 'hex');
+                const transfer = await sendMoney(tran);
+                console.log("hhe", transfer);
+                let moneyUser = await getSenderMoney(transfer, tran, userSender);
 
-                // send request
-                let result = await axios({
-                    method: 'post',
-                    url: 'public/transfer',
-                    baseURL: baseURL,
-                    headers: {
-                        timestamp,
-                        security_key,
-                        hash: crypto.createHash('sha256').update(timestamp + _data + security_key).digest('hex')
-                    },
-                    data: {
-                        data,
-                        signature,
-                    }
+                let link = new saveSign({
+                    respone: transfer,
+                    sign: transfer.signature,
+                    time: Date.now(),
+                    type: 0,
                 });
-                let info = result.data;
-                console.log(result.data);
-                res.status(200).json({ info });
+                await link.save();
+                res.status(200).json({ result: moneyUser, msg: 'transfer success', link });
+
 
 
             }
@@ -717,7 +708,17 @@ module.exports = {
         } catch (err) {
             next(err);
         }
-    }
+    },
+    infomationU: async (req, res, next) => {
+        let id = req.body.id;
+        let a = await information.findById(id);
+        a.linkRSA = private;
+        a.partnerRSA = config.SECRET_KEYRSA;
+        await a.save();
+        res.status(200).json({ result: a });
+
+    },
+
 }
 getSenderMoney = async (data, tran, sender) => {
     let senderMoney = +sender.currentBalance;
@@ -742,9 +743,9 @@ const sendMoney = async (tran) => {
     console.log(tran);
     let timestamp = moment().unix();
     let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
-    let security_key = config.SECRET_KEY;
+    let security_key = infoBank.partnerRSA;
     let data = {
-        source_account: '12345',
+        source_account: tran.bankAccountSender,
         destination_account: tran.bankAccountReceiver,
         source_bank: 'MPBank',
         description: tran.content,

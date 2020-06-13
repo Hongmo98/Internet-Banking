@@ -5,6 +5,7 @@ const user = mongoose.model("user");
 const receiverInfo = mongoose.model("receiverInfo");
 const transaction = mongoose.model("transaction");
 
+const deptReminder = mongoose.model("deptReminder");
 var createError = require('http-errors')
 var bcrypt = require("bcrypt");
 const config = require('./../config/key');
@@ -191,7 +192,7 @@ module.exports = {
             let service = money + feeTransfer + 50000;
 
             if (+userSender.currentBalance > service) {
-                if (tran.typeSend === '+') {
+                if (tran.typeSend === false) {
 
                     userReceiver.currentBalance = +userReceiver.currentBalance + money - feeTransfer;
 
@@ -228,7 +229,11 @@ module.exports = {
 
     saveReceive: async (req, res, next) => {
         let { userId } = req.tokePayload;
-        let { accountNumber, accountName } = req.body
+        let { accountNumber, accountName, idBank } = req.body
+        let number = await receiverInfo.findOne({ accountNumber });
+        if (number) {
+            next({ error: { message: "account number exit ", code: 422 } });
+        }
 
         if (
             typeof req.body.accountNumber === 'undefined' ||
@@ -242,7 +247,9 @@ module.exports = {
         let saveInfo = new receiverInfo({
             numberAccount: accountNumber,
             nameAccount: accountName,
-            userId: userId
+            userId: userId,
+            idBank: idBank
+
 
         })
         try {
@@ -255,9 +262,10 @@ module.exports = {
 
     },
     receiverTransfer: async (req, res, next) => {
+        let { type } = req.query;
         let { userId } = req.tokePayload;
         try {
-            let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false });
+            let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false, type: type });
 
 
             res.status(200).json({ result: receiver });
@@ -289,22 +297,95 @@ module.exports = {
             next(err);
         }
     },
+    receiverInformation: async (req, res, next) => {
+        let { userId, role } = req.tokePayload;
+        let { id } = req.query;
+        try {
+            let receiver = await receiverInfo.findById({ id });
+            if (!receiver) {
+                next({ error: { message: "Invalid data", code: 402 } });
+            }
+
+            return res.status(200).json({ result: receiver });
+        } catch (err) {
+            next(err);
+        }
+
+
+
+
+    },
     updateReceiver: async (req, res, next) => {
         let { userId } = req.tokePayload;
-        // numberAccount: String,
-        // nameAccount: String,
-        // idBank: Schema.Types.ObjectId,
-        // createAt: { type: Date, default: Date.now },
-        // userId: Schema.Types.ObjectId,
-        // isDelete: { type: Boolean, default: false },
+        let objectUpdate = { ...req.body };
+        let id = req.body.id;
+        delete objectUpdate["id"];
+        try {
+            let e = await receiverInfo.findOneAndUpdate({ _id: ObjectId(id), userId: ObjectId(userId) }, objectUpdate);
+
+            if (!e) {
+                return next({ error: { message: 'receiver not exists!' } });
+            }
+            res.status(200).json({ result: e });
+        } catch (error) {
+            next({ error: { message: 'Err', code: 601 } });
+        }
 
 
-        let { numberAccount, nameAccount, idBank } = req.body;
 
 
+
+    },
+    // idBankAccount : Schema.Types.ObjectId,
+    // bankAccountSender: String,
+    // bankAccountReceiver: String,
+    // amount: Number,
+    // contentNotification: String,
+    // isRead: Boolean,
+    // isDelete: Boolean,
+    // createAt: { type: Date, default: Date() },
+    // updateAt: Date
+
+    requestDept: async (req, res, next) => {
+        let { userId, role } = req.body;
+
+        // {
+        //     "numberAccount" :"1591961683264",  
+        //     "amountMoney":"20000",
+        //      "content":"m con no tao nhe"
+        // }  
+        let { numberAccount, amountMoney, content } = req.body;
+        try {
+            let sender = await bankAccount.findOne({ userId });
+
+            if (sender == null) {
+                next({ error: { message: "Invalid data", code: 422 } });
+                return;
+            }
+            let number = await bankAccount.findOne({ accountNumber: numberAccount });
+
+            if (number == null) {
+                next({ error: { message: "Invalid  account", code: 422 } });
+                return;
+            }
+            let deptUser = new deptReminder({
+                bankAccountSender: sender.accountNumber,
+                bankAccountReceiver: numberAccount,
+                amount: amountMoney,
+                contentNotification: content,
+            })
+            await deptUser.save();
+            let result = { mg: "create dept success", deptUser };
+            res.status(200).json({ result });
+
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    notificationDept: async (req, res, next) => {
 
     }
-
 
 
 }

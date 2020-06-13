@@ -8,8 +8,8 @@ const receiverInfoSchema = new Schema({
     createAt: { type: Date, default: Date.now },
     userId: Schema.Types.ObjectId,
     isDelete: { type: Boolean, default: false },
-
-
+    //TRANSFER  DEPT
+    type: { type: String, "index": "text", default: "TRANSFER" },
 
 })
 

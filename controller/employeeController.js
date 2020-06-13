@@ -48,13 +48,13 @@ module.exports = {
         if (role === 'EMPLOYEE') {
             let userFind = null;
             let accountNumber = generateAccountNumber();
-  
+
             let userName = generateUserName();
-         
+
             let password = generatePassword();
-          
+
             let hashPass = bcrypt.hashSync(password, 10);
-      
+
 
             userFind = await bankAccount.findOne({ email: email });
 
