@@ -4,6 +4,7 @@ const { Schema } = mongoose;
 const receiverInfoSchema = new Schema({
     numberAccount: String,
     nameAccount: String,
+    nameRemind: String,
     idBank: Schema.Types.ObjectId,
     createAt: { type: Date, default: Date.now },
     userId: Schema.Types.ObjectId,

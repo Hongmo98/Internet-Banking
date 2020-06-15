@@ -63,8 +63,8 @@ module.exports = {
                 res.status(200).json({
                     accessToken,
                     refreshToken,
-                    name,
-                    role
+                    userFind,
+
                 });
 
             }
@@ -166,10 +166,12 @@ module.exports = {
 
         return res.status(200).json({ result: objUser });
     },
-    // logout: async (req, res) => {
-    //     req.logout();
-    //     res.status(200).json({ result: true });
-    // },
+    logout: async (req, res) => {
+
+        req.logout();
+        res.status(200).json({ result: true });
+
+    },
 
     refreshToken: async (req, res, next) => {
 
@@ -227,7 +229,7 @@ module.exports = {
         let userCurrent = null;
         try {
 
-            userCurrent = await bankAccount.findOne({ userId: ObjectId(userId), typeAccount: typeAccount, accountNumber: accountNumber });
+            userCurrent = await bankAccount.find({ userId: ObjectId(userId), typeAccount: typeAccount, accountNumber: accountNumber });
             if (userCurrent === null) {
                 next({ error: { message: "not found user", code: 402 } });
                 return;
@@ -387,7 +389,7 @@ module.exports = {
         }
         let userAccount = null;
         try {
-            userAccount = await bankAccount.findOne({ userId: ObjectId(userId), typeAccount: typeAccount })
+            userAccount = await bankAccount.find({ userId: ObjectId(userId), typeAccount: typeAccount })
             if (userAccount === null) {
                 next({ error: { message: "not found user", code: 402 } });
                 return;

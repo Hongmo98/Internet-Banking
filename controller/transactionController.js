@@ -4,11 +4,28 @@ const bankAccount = mongoose.model("bankAccount");
 const user = mongoose.model("user");
 const receiverInfo = mongoose.model("receiverInfo");
 const transaction = mongoose.model("transaction");
+const information = mongoose.model("information");
+const deptInformation = mongoose.model("deptInformation");
 
 const deptReminder = mongoose.model("deptReminder");
 var createError = require('http-errors')
 var bcrypt = require("bcrypt");
 const config = require('./../config/key');
+const redis = require("redis");
+// const src = 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com:13088';
+const client = redis.createClient('13088', 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com', { no_ready_check: true });
+client.auth('Z9qiKNw7XcCx1AgrFJMdpC81DO8Betle', function (err) {
+
+});
+
+client.on('error', function (err) {
+    console.log('Error ' + err);
+});
+
+client.on('connect', function () {
+    console.log('Connected to Redis');
+});
+
 
 const ObjectId = mongoose.Types.ObjectId;
 
@@ -16,6 +33,27 @@ const mailer = require("../utils/Mailer");
 const otp = require("../utils/otp");
 
 module.exports = {
+
+    test: async (req, res) => {
+
+        //client.del('hello'); // xoa
+
+        // No further commands will be processed
+
+        client.get("hello", function (err, d) {
+            console.log(d)
+            res.send(d);
+        });
+
+
+    },
+    test1: (req, res) => {
+        client.setex("hello", 100, "world", function (err) {
+
+            console.error(err);
+        });
+        res.send(true);
+    },
     requestReceiver: async (req, res, next) => {
         let { userId } = req.tokePayload;
 
@@ -31,43 +69,41 @@ module.exports = {
 
         try {
             let sender = await bankAccount.findOne({ userId });
-
+            let email = sender.email;
 
             if (sender == null) {
                 next({ error: { message: "Invalid data", code: 422 } });
                 return;
             }
-            let accountSender = sender.accountNumber;
+
             let { receiver, amountMoney, content, typeSend } = req.body;
             console.log(req.body);
-            let currentUser = null;
-            if (typeSend === '+' || typeSend === '-') {
+
+            if (typeSend === true || typeSend === false) {
 
                 let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
+                let nameReceiver = userReceiver.accountName;
                 console.log(userReceiver);
                 if (userReceiver === null) {
                     next({ error: { message: "Not found account number", code: 422 } });
                     return;
                 }
-                let nameReceiver = userReceiver.accountName;
 
-                let newTransaction = new transaction({
-                    bankAccountSender: accountSender,
-                    bankAccountReceiver: receiver,
-                    amount: amountMoney,
-                    content: content,
-                    typeSend: typeSend,
-                    typeTransaction: "TRANSFER",
-                    fee: 2200,
-                    CodeOTP: "",
-                    status: "PROGRESS",
-                    timeOTP: Date.now(),
 
-                })
-                await newTransaction.save();
+                let token = otp.generateOTP();
+                client.setex(userId, 100, token, function (err) {
 
-                let data = { newTransaction, sender, nameReceiver }
-                res.status(200).json({ result: data });
+                    console.error(err);
+                });
+                mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
+                    .then(async (json) => {
+
+                        console.log(json);
+
+                        let data = { sender, nameReceiver, message: "send otp email ", content, amountMoney, typeSend, receiver }
+                        res.status(200).json({ result: data });
+                    })
+
             } else {
                 next({ error: { message: "type  cannot  suit", code: 422 } });
                 return;
@@ -144,7 +180,7 @@ module.exports = {
 
     },
     verifyOTP: async (req, res, next) => {
-        let { userId } = req.tokePayload;
+        let { userId, role } = req.tokePayload;
         console.log(req.body.code);
         if (
             typeof req.body.code === 'undefined'
@@ -154,70 +190,78 @@ module.exports = {
             return;
         }
 
-        let { code } = req.body;
+        let { code, receiver, amountMoney, content, typeSend } = req.body;
 
-        // {
-        //     "code": "527675",
+        console.log(req.body);
+        let userSender = await bankAccount.findOne({ userId });
 
-        // }
+        if (userSender == null) {
+            next({ error: { message: "invalid correct", code: 422 } });
+        }
 
-
+        console.log(code);
         try {
-            let tran = await transaction.findOne({ CodeOTP: code });
 
-            if (tran === null) {
-                next({ error: { message: "not code correct", code: 422 } });
-                return;
-            }
-            console.log(tran);
-
-            let timeOTP = Date.now();
-            let timestamp = Date.parse(tran.timeOTP) + 600000;
-            console.log("mo", Date.parse(tran.timeOTP));
-            console.log(timeOTP);
-
-            let userSender = await bankAccount.findOne({ accountNumber: tran.bankAccountSender });
-
-            if (userSender == null) {
-                next({ error: { message: "invalid correct", code: 422 } });
-            }
-
-            let userReceiver = await bankAccount.findOne({ accountNumber: tran.bankAccountReceiver });
-            if (userReceiver == null) {
-                next({ error: { message: "invalid correct", code: 422 } });
-            }
-            let money = +tran.amount;
-            console.log(money);
-            let feeTransfer = +tran.fee;
-            let service = money + feeTransfer + 50000;
-
-            if (+userSender.currentBalance > service) {
-                if (tran.typeSend === false) {
-
-                    userReceiver.currentBalance = +userReceiver.currentBalance + money - feeTransfer;
-
-                    userSender.currentBalance = + userSender.currentBalance - money;
+            client.get(userId, async function (err, value) {
+                if (err) {
+                    next({ error: { message: "time otp expire", code: 422 } });
                 }
-                else {
-                    userReceiver.currentBalance = +userReceiver.currentBalance + money;
+                console.log("mo", value);
+                if (value === code) {
 
-                    userSender.currentBalance = + userSender.currentBalance - money - feeTransfer;
+                    let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
+                    if (userReceiver == null) {
+                        next({ error: { message: "invalid correct", code: 422 } });
+                    }
+                    let money = +amountMoney;
+
+                    let feeTransfer = + 2200;
+                    let service = money + feeTransfer + 50000;
+
+                    if (+userSender.currentBalance > service) {
+                        if (typeSend === false) {
+
+                            userReceiver.currentBalance = +userReceiver.currentBalance + money - feeTransfer;
+
+                            userSender.currentBalance = + userSender.currentBalance - money;
+                        }
+                        else {
+                            userReceiver.currentBalance = +userReceiver.currentBalance + money;
+
+                            userSender.currentBalance = + userSender.currentBalance - money - feeTransfer;
+                        }
+
+                        await userReceiver.save();
+                        console.log(userReceiver);
+                        await userSender.save();
+                        console.log(userSender);
+
+                        let newTransaction = new transaction({
+                            bankAccountSender: userSender.accountNumber,
+                            bankAccountReceiver: receiver,
+                            amount: amountMoney,
+                            content: content,
+                            typeSend: typeSend,
+                            typeTransaction: "TRANSFER",
+                            fee: 2200,
+                            status: "SUCCESS",
+                        })
+                        await newTransaction.save();
+
+
+                        let pro = {
+                            userReceiver, userSender, newTransaction, msg: "transfer success"
+                        };
+                        res.status(200).json({ result: pro });
+
+                    } else {
+                        next({ error: { message: "current balance isn't to transfer money", code: 422 } });
+                    }
+
+                } else {
+                    next({ error: { message: "otp exit ", code: 422 } });
                 }
-                tran.CodeOTP = "";
-                tran.status = "SUCCESS";
-                await userReceiver.save();
-                console.log(userReceiver);
-                await userSender.save();
-                console.log(userSender);
-                await tran.save();
-                console.log(tran);
-
-                let pro = { userReceiver, userSender, tran };
-                res.status(200).json({ result: pros });
-
-            } else {
-                next({ error: { message: "current balance isn't to transfer money", code: 422 } });
-            }
+            });
 
         } catch (err) {
             next(err);
@@ -229,26 +273,34 @@ module.exports = {
 
     saveReceive: async (req, res, next) => {
         let { userId } = req.tokePayload;
-        let { accountNumber, accountName, idBank } = req.body
+        // {
+        //     "accountNumber":"1591656428697",
+        //     "accountName"  :"nguyen thi hu huong",
+        //     "idBank"  :"5ee353c900cceb8a5001c7cf",
+        //     "nameRemind":"huong huong"
+        // }
+        let { accountNumber, accountName, idBank, nameRemind } = req.body
+        console.log(req.body);
         let number = await receiverInfo.findOne({ accountNumber });
         if (number) {
             next({ error: { message: "account number exit ", code: 422 } });
         }
 
-        if (
-            typeof req.body.accountNumber === 'undefined' ||
-            typeof req.body.accountName === 'undefined'
+        // if (
+        //     typeof req.body.accountNumber === 'undefined' ||
+        //     typeof req.body.accountName === 'undefined'
 
-        ) {
-            next({ error: { message: "Invalid data", code: 422 } });
-            return;
-        }
+        // ) {
+        //     next({ error: { message: "In valid data", code: 422 } });
+        //     return;
+        // }
 
         let saveInfo = new receiverInfo({
             numberAccount: accountNumber,
             nameAccount: accountName,
             userId: userId,
-            idBank: idBank
+            idBank: idBank,
+            nameRemind: nameRemind
 
 
         })
@@ -262,10 +314,10 @@ module.exports = {
 
     },
     receiverTransfer: async (req, res, next) => {
-        let { type } = req.query;
+
         let { userId } = req.tokePayload;
         try {
-            let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false, type: type });
+            let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false });
 
 
             res.status(200).json({ result: receiver });
@@ -301,7 +353,7 @@ module.exports = {
         let { userId, role } = req.tokePayload;
         let { id } = req.query;
         try {
-            let receiver = await receiverInfo.findById({ id });
+            let receiver = await receiverInfo.findById({ _id: ObjectId(id) });
             if (!receiver) {
                 next({ error: { message: "Invalid data", code: 402 } });
             }
@@ -373,9 +425,21 @@ module.exports = {
                 bankAccountReceiver: numberAccount,
                 amount: amountMoney,
                 contentNotification: content,
+
+            })
+            // bankAccountSender: String,
+            // bankAccountReceiver: String,
+            // amount: Number,
+            // // PAY , UNPAY
+            // status:  { type: String, "index": "text", default: "UNPAY" },
+            let deptInfo = new deptReminder({
+                bankAccountSender: sender.accountNumber,
+                bankAccountReceiver: numberAccount,
+                amount: amountMoney
             })
             await deptUser.save();
-            let result = { mg: "create dept success", deptUser };
+            await deptInfo.save();
+            let result = { mg: "create dept success", deptUser, deptInfo };
             res.status(200).json({ result });
 
         } catch (err) {
@@ -384,10 +448,135 @@ module.exports = {
     },
 
     notificationDept: async (req, res, next) => {
+        let { userId, role } = req.tokePayload;
 
+        client.set(userId, '42', function (err) {
+            if (err) {
+                throw err; /* in production, handle errors more gracefully */
+            }
+            else {
+                client.get(userId, function (err, value) {
+                    if (err) {
+                        throw err;
+                    } else {
+                        console.log(value);
+                        res.status(200).json({ value });
+                    }
+                }
+                );
+            }
+        });
+
+    },
+    showDeptRemindUnPay: async (req, res, next) => {
+        let { userId, role } = req.tokePayload;
+        try {
+            let sender = await bankAccount.findOne({ userId });
+
+            if (sender == null) {
+                next({ error: { message: "Invalid data", code: 422 } });
+                return;
+            }
+            let dept = await deptInformation.find({ bankAccountReceiver: sender.accountNumber, isDelete: false });
+            if (dept == null) {
+                next({ error: { message: "Invalid list dept", code: 422 } });
+                return;
+            }
+            res.status(200).json({ result: dept });
+        } catch (err) {
+            next(err);
+        }
+
+    },
+    showDeptRemind: async (req, res, next) => {
+        let { userId, role } = req.tokePayload;
+        try {
+
+            let dept = await deptInformation.find({ bankAccountSender: sender.accountNumber, isDelete: false });
+            if (dept == null) {
+                next({ error: { message: "Invalid list dept", code: 422 } });
+                return;
+            }
+
+            res.status(200).json({ result: dept, deptUser });
+        } catch (err) {
+            next(err);
+        }
+
+    },
+    //     getListNotification: async(req, res, next) => {
+    //         let { userId, role } = req.tokePayload;
+    //         try {
+    //             let sender = await bankAccount.findOne({ userId });
+
+    //             if (sender == null) {
+    //                 next({ error: { message: "Invalid data", code: 422 } });
+    //                 return;
+    //             }
+
+    //         } catch (err) {
+    //             next(err);
+    //         }
+    // }
+    deleteReminder: async (req, res, next) => {
+        if (typeof req.body.reminderId === 'undefined') {
+            next({ error: { message: "Invalid data", code: 402 } });
+            return;
+        }
+
+        let { reminderId } = req.body;
+        let { userId } = req.tokePayload;
+
+        try {
+            let reminder = await deptInformation.findById({ id: reminderId });
+            reminder.isDelete = true;
+
+            await reminder.save();
+            return res.status(200).json({ msg: "delete success" });
+        } catch (err) {
+            next(err);
+        }
+    },
+    transferReminder: async (req, res, next) => {
+        let { userId, role } = req.tokePayload;
+        let { accountReminder, money, content } = req.body;
+
+        try {
+            let sender = await bankAccount.findOne({ userId });
+
+            if (sender == null) {
+                next({ error: { message: "Invalid data", code: 422 } });
+                return;
+            } let userReceiver = await bankAccount.findOne({ accountNumber: accountReminder });
+            console.log(userReceiver);
+            if (userReceiver === null) {
+                next({ error: { message: "Not found account number", code: 422 } });
+                return;
+            }
+            let nameReceiver = userReceiver.accountName;
+
+            let newTransaction = new transaction({
+                bankAccountSender: sender.accountNumber,
+                bankAccountReceiver: accountReminder,
+                amount: money,
+                content: content,
+                typeSend: typeSend,
+                typeTransaction: "inDebt",
+                fee: 2200,
+                CodeOTP: "",
+                status: "PROGRESS",
+                timeOTP: Date.now(),
+            })
+            await newTransaction.save();
+
+
+            let data = { newTransaction, sender, nameReceiver }
+            res.status(200).json({ result: data });
+
+        } catch (err) {
+
+        }
     }
-
-
 }
 
 

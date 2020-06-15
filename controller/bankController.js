@@ -15,6 +15,12 @@ const config = require('./../config/key');
 const ObjectId = mongoose.Types.ObjectId;
 const mailer = require("../utils/Mailer");
 const otp = require("../utils/otp");
+const redis = require("redis");
+// const src = 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com:13088';
+const client = redis.createClient('13088', 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com', { no_ready_check: true });
+client.auth('Z9qiKNw7XcCx1AgrFJMdpC81DO8Betle', function (err) {
+
+});
 
 
 const private = `-----BEGIN RSA PRIVATE KEY-----
@@ -402,13 +408,14 @@ module.exports = {
 
         let sender = await bankAccount.findOne({ userId });
         let numberSender = sender.accountNumber;
+        let email = sender.email;
         console.log(numberSender);
 
         if (sender == null) {
             next({ error: { message: "Invalid data", code: 422 } });
             return;
         }
-        let newTransaction = null;
+
         // {
         //     "nameBank":"NKLBank",
         //     "receiver":"12345",
@@ -416,6 +423,8 @@ module.exports = {
         //     "amountMoney":20000,
         //     "content":"hehe"
         // }
+        let token = otp.generateOTP();
+        let info = null;
         const partner_code = req.headers["partner_code"];
         let { nameBank, content, amountMoney, receiver, typeSend } = req.body;
         if (nameBank === "NKLBank") {
@@ -425,7 +434,7 @@ module.exports = {
             let source_account = '3234';
             let target_account = receiver;
             const data = { transaction_type, source_account, target_account };
-            const secret_key = config.SECRET_KEYRSA;
+            const secret_key = config.SECRET_KEY;
             console.log(data);
             const hash = CryptoJS.AES.encrypt(
                 JSON.stringify({ data, timestamp, secret_key }),
@@ -448,23 +457,24 @@ module.exports = {
                             { headers: _headers }
                         )
                         .then(async function (response) {
-                            newTransaction = new transaction({
-                                bankAccountSender: numberSender,
-                                bankAccountReceiver: target_account,
-                                amount: amountMoney,
-                                content: content,
-                                typeTransaction: "TRANSFER",
-                                fee: 2200,
-                                CodeOTP: "",
-                                status: "PROGRESS",
-                                timeOTP: Date.now(),
-                                nameBank: nameBank,
-                                typeSend: typeSend,
-                            })
-                            await newTransaction.save();
                             let info = response.data;
-                            console.log(newTransaction)
-                            let data = { newTransaction, sender, info }
+
+                            client.setex(userId, 100, token, function (err) {
+
+                                console.error(err);
+                            });
+                            mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
+                                .then(async (json) => {
+                                    let dataReceiver = { content, amountMoney, typeSend, nameBank }
+                                    let data = { sender, info, dataReceiver, message: "send otp email " }
+
+                                    console.log(json);
+
+
+
+                                })
+
+                            let data = { sender, info }
                             res.status(200).json({ result: data });
                             // res.status(200).json({ result: info })
 
@@ -482,30 +492,27 @@ module.exports = {
             catch (err) {
                 next(err);
             }
+            // let account_number = receiver;
+            // let a = await getInfoPGP(account_number);
+            // res.status(200).json({ result: a });
         }
         else {
             let account_number = receiver;
             let dataInfo = await getInfo(account_number);
-            console.log("dataInfo", dataInfo);
-            newTransaction = new transaction({
-                bankAccountSender: numberSender,
-                bankAccountReceiver: receiver,
-                amount: amountMoney,
-                content: content,
-                typeTransaction: "TRANSFER",
-                fee: 3300,
-                CodeOTP: "",
-                status: "PROGRESS",
-                timeOTP: Date.now(),
-                nameBank: nameBank,
-                typeSend: typeSend
-            })
-            await newTransaction.save();
+            client.setex(userId, 100, token, function (err) {
 
-            console.log(newTransaction)
-            let data = { newTransaction, sender, dataInfo }
-            res.status(200).json({ result: data });
+                console.error(err);
+            });
+            mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
+                .then(async (json) => {
+                    let dataReceiver = { content, amountMoney, typeSend }
+                    let data = { sender, dataInfo, dataReceiver, message: "send otp email " }
 
+                    console.log(json);
+
+
+                    res.status(200).json({ result: data });
+                })
 
         }
 
@@ -581,131 +588,153 @@ module.exports = {
             next({ error: { message: "Invalid data", code: 422 } });
             return;
         }
-
-        let { code } = req.body;
+        let { nameBank, content, amountMoney, receiver, typeSend, code } = req.body;
+        console.log(req.body);
         try {
-            let tran = await transaction.findOne({ CodeOTP: code });
 
-            if (tran === null) {
-                next({ error: { message: "not code correct", code: 422 } });
-                return;
-            }
-            console.log("tran", tran);
 
-            let accountReceiver = tran.bankAccountReceiver;
 
-            let amount = tran.amount;
-            let timeOTP = Date.now();
-            let timestamp = Date.parse(tran.timeOTP) + 600000;
-            console.log("mo", Date.parse(tran.timeOTP));
-            // console.log(timeOTP);
-
-            let userSender = await bankAccount.findOne({ accountNumber: tran.bankAccountSender });
+            let userSender = await bankAccount.findOne({ userId });
             console.log(userSender);
             if (userSender == null) {
                 next({ error: { message: "invalid correct", code: 422 } });
             }
-
-
-            if (tran.nameBank === 'NKLBank') {
-
-                const partner_code = "MtcwLbASeIXVnKurQCHrDCmsTEsBD7rQ44wHsEWjWtl8k";
-                let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
-                // console.log(infoBank);
-
-                const timestamp = moment().toString();
-                let transaction_type = '+';
-                let source_account = '3234';
-                let target_account = accountReceiver;
-                let amount_money = amount;
-                const data = { transaction_type, source_account, target_account, amount_money };
-
-                const secret_key = config.SECRET_KEY;
-                // console.log(data);
-                const hash = CryptoJS.AES.encrypt(
-                    JSON.stringify({ data, timestamp, secret_key }),
-                    secret_key
-                ).toString();
-
-                const _headers = {
-                    partner_code: partner_code,
-                    timestamp: timestamp,
-                    api_signature: hash,
-                };
-
-                try {
-
-                    if (data.transaction_type === "+" || data.transaction_type === "-") {
-
-                        (async () => {
-
-                            const {
-                                keys: [privateKey],
-                            } = await openpgp.key.readArmored(infoBank.linkPGP);
-                            await privateKey.decrypt(config.passphrase);
-
-                            const { data: cleartext } = await openpgp.sign({
-                                message: openpgp.cleartext.fromText(JSON.stringify(data)),
-                                privateKeys: [privateKey],
-                            });
-
-                            signed_data = cleartext;
-
-                            axios
-                                .post(
-                                    "https://nklbank.herokuapp.com/api/partnerbank/request",
-                                    { data, signed_data },
-                                    { headers: _headers }
-                                )
-                                .then(async function (response) {
-                                    let transfer = await getSenderMoney(response.data, tran, userSender);
-                                    let link = new saveSign({
-                                        respone: response.data,
-                                        sign: response.data.sign,
-                                        time: Date.now(),
-                                        type: 0,
-                                    });
-                                    await link.save();
-                                    res.status(200).json({ result: transfer, msg: 'transfer success', link });
-
-                                })
-                                .catch(function (error) {
-                                    console.log(error.response);
-                                    // res.status(error.response.status).send(error.response.data);
-                                });
-                        })();
-
-
-                    }
-                    else {
-                        next({ error: { message: "invalid correct", code: 422 } });
-                    }
-
-                } catch (err) {
-                    next(err);
+            client.get(userId, async function (err, value) {
+                if (err) {
+                    next({ error: { message: "time otp expire", code: 422 } });
                 }
-            }
-            if (tran.nameBank === 'S2QBank') {
+                console.log("mo", value);
+                if (value === code) {
 
-                const transfer = await sendMoney(tran);
-                console.log("hhe", transfer);
-                let moneyUser = await getSenderMoney(transfer, tran, userSender);
+                    if (nameBank === 'NKLBank') {
 
-                let link = new saveSign({
-                    respone: transfer,
-                    sign: transfer.signature,
-                    time: Date.now(),
-                    type: 0,
-                });
-                await link.save();
-                res.status(200).json({ result: moneyUser, msg: 'transfer success', link });
+                        const partner_code = "MtcwLbASeIXVnKurQCHrDCmsTEsBD7rQ44wHsEWjWtl8k";
+                        let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
+                        // console.log(infoBank);
+
+                        const timestamp = moment().toString();
+                        let transaction_type = '+';
+                        let source_account = '3234';
+                        let target_account = receiver;
+                        let amount_money = amountMoney;
+                        const data = { transaction_type, source_account, target_account, amount_money };
+                        const secret_key = config.SECRET_KEY;
+                        // console.log(data);
+                        const hash = CryptoJS.AES.encrypt(
+                            JSON.stringify({ data, timestamp, secret_key }),
+                            secret_key
+                        ).toString();
+
+                        const _headers = {
+                            partner_code: partner_code,
+                            timestamp: timestamp,
+                            api_signature: hash,
+                        };
+                        console.log(_headers);
+
+                        try {
+
+                            if (data.transaction_type === "+" || data.transaction_type === "-") {
+
+                                (async () => {
+
+                                    const {
+                                        keys: [privateKey],
+                                    } = await openpgp.key.readArmored(infoBank.linkPGP);
+                                    await privateKey.decrypt(config.passphrase);
+
+                                    const { data: cleartext } = await openpgp.sign({
+                                        message: openpgp.cleartext.fromText(JSON.stringify(data)),
+                                        privateKeys: [privateKey],
+                                    });
+
+                                    signed_data = cleartext;
+                                    console.log(cleartext);
+
+                                    axios
+                                        .post(
+                                            "https://nklbank.herokuapp.com/api/partnerbank/request",
+                                            { data, signed_data },
+                                            { headers: _headers }
+                                        )
+                                        .then(async function (response) {
+                                            let transfer = await getSenderMoney(response.data, amountMoney, typeSend, userSender);
+                                            let link = new saveSign({
+                                                respone: response.data,
+                                                sign: response.data.sign,
+                                                time: Date.now(),
+                                                type: 0,
+                                            });
+                                            let newTransaction = new transaction({
+                                                bankAccountSender: userSender.accountNumber,
+                                                bankAccountReceiver: target_account,
+                                                amount: amountMoney,
+                                                content: content,
+                                                typeTransaction: "TRANSFER",
+                                                fee: 3300,
+                                                status: "SUCCESS",
+                                                nameBank: nameBank,
+                                                typeSend: typeSend,
+                                            })
+                                            await newTransaction.save();
+                                            await link.save();
+                                            let data = { newTransaction, link, partner: response.data, transfer, msg: 'transfer success' }
+                                            res.status(200).json({ result: data });
+
+                                        })
+                                        .catch(function (error) {
+                                            console.log(error.response);
+                                            // res.status(error.response.status).send(error.response.data);
+                                        });
+                                })();
+
+
+                            }
+                            else {
+                                next({ error: { message: "invalid correct", code: 422 } });
+                            }
+
+                        } catch (err) {
+                            next(err);
+                        }
+                    }
+                    if (nameBank === 'S2QBank') {
+
+                        const transfer = await sendMoney(content, amountMoney, receiver, typeSend, userSender);
+                        console.log("hhe", transfer);
+                        let moneyUser = await getSenderMoney(transfer, amountMoney, typeSend, userSender);
+                        console.log(moneyUser);
+                        let link = new saveSign({
+                            respone: transfer,
+                            sign: transfer.signature,
+                            time: Date.now(),
+                            type: 0,
+                        });
+                        let newTransaction = new transaction({
+                            bankAccountSender: userSender.accountNumber,
+                            bankAccountReceiver: receiver,
+                            amount: amountMoney,
+                            content: content,
+                            typeTransaction: "TRANSFER",
+                            fee: 3300,
+                            status: "SUCCESS",
+                            nameBank: nameBank,
+                            typeSend: typeSend,
+                        })
+                        await newTransaction.save();
+                        await link.save();
+                        res.status(200).json({ result: moneyUser, newTransaction, msg: 'transfer success', link });
+                        // res.status(200).json({ transfer });
 
 
 
-            }
-
-
-        } catch (err) {
+                    }
+                } else {
+                    next({ error: { message: "otp exit ", code: 422 } });
+                }
+            })
+        }
+        catch (err) {
             next(err);
         }
     },
@@ -720,38 +749,42 @@ module.exports = {
     },
 
 }
-getSenderMoney = async (data, tran, sender) => {
+getSenderMoney = async (data, amountMoney, typeSend, sender) => {
     let senderMoney = +sender.currentBalance;
-    let money = +tran.amount;
-    let fee = +tran.fee;
-    // console.log('money', money);
-    let total = senderMoney - money - fee;
-    sender.currentBalance = total;
-    await sender.save();
-    tran.CodeOTP = "";
-    tran.status = "SUCCESS";
-    await tran.save()
+    let money = +amountMoney;
+    let fee = 3300;
+    let total = senderMoney - money
+    if (typeSend === true) {
 
-    let transfer = { data, tran, sender };
+        sender.currentBalance = total - fee;
+
+    } else {
+        sender.currentBalance = total;
+
+    }
+    await sender.save();
+
+
+    let transfer = { data, sender };
     // console.log(transfer)
     return transfer;
 
 };
 
 
-const sendMoney = async (tran) => {
-    console.log(tran);
+const sendMoney = async (content, amountMoney, receiver, typeSend, userSender) => {
+
     let timestamp = moment().unix();
     let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
     let security_key = infoBank.partnerRSA;
     let data = {
-        source_account: tran.bankAccountSender,
-        destination_account: tran.bankAccountReceiver,
+        source_account: userSender.accountNumber,
+        destination_account: receiver,
         source_bank: 'MPBank',
-        description: tran.content,
-        feePayBySender: tran.typeSend,
+        description: content,
+        feePayBySender: typeSend,
         fee: 3300,
-        amount: tran.amount
+        amount: amountMoney
     };
     let _data = JSON.stringify(data);
     try {
@@ -803,6 +836,7 @@ const getInfo = async (account_number) => {
         console.log(error);
     }
 }
+
 
 
 
