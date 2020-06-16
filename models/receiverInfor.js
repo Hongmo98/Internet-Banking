@@ -6,6 +6,7 @@ const receiverInfoSchema = new Schema({
     nameAccount: String,
     nameRemind: String,
     idBank: Schema.Types.ObjectId,
+    nameBank: String,
     createAt: { type: Date, default: Date.now },
     userId: Schema.Types.ObjectId,
     isDelete: { type: Boolean, default: false },

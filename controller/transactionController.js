@@ -6,7 +6,7 @@ const receiverInfo = mongoose.model("receiverInfo");
 const transaction = mongoose.model("transaction");
 const information = mongoose.model("information");
 const deptInformation = mongoose.model("deptInformation");
-
+const linkedBank = mongoose.model("linkedBank");
 const deptReminder = mongoose.model("deptReminder");
 var createError = require('http-errors')
 var bcrypt = require("bcrypt");
@@ -67,51 +67,70 @@ module.exports = {
             next({ error: { message: "Invalid data", code: 422 } });
         }
 
-        try {
-            let sender = await bankAccount.findOne({ userId });
-            let email = sender.email;
+        // try {
+        let sender = await bankAccount.findOne({ userId });
+        let email = sender.email;
 
-            if (sender == null) {
-                next({ error: { message: "Invalid data", code: 422 } });
-                return;
-            }
-
-            let { receiver, amountMoney, content, typeSend } = req.body;
-            console.log(req.body);
-
-            if (typeSend === true || typeSend === false) {
-
-                let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
-                let nameReceiver = userReceiver.accountName;
-                console.log(userReceiver);
-                if (userReceiver === null) {
-                    next({ error: { message: "Not found account number", code: 422 } });
-                    return;
-                }
-
-
-                let token = otp.generateOTP();
-                client.setex(userId, 100, token, function (err) {
-
-                    console.error(err);
-                });
-                mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
-                    .then(async (json) => {
-
-                        console.log(json);
-
-                        let data = { sender, nameReceiver, message: "send otp email ", content, amountMoney, typeSend, receiver }
-                        res.status(200).json({ result: data });
-                    })
-
-            } else {
-                next({ error: { message: "type  cannot  suit", code: 422 } });
-                return;
-            }
-
-        } catch (err) {
-            next(err);
+        if (sender == null) {
+            next({ error: { message: "Invalid data", code: 422 } });
+            return;
         }
+
+        let { receiver, amountMoney, content, typeSend } = req.body;
+        console.log(req.body);
+        if (content === ' ') {
+            content = `${sender.accountName} transfer you`
+        }
+
+        console.log(content);
+
+        if (typeSend === true || typeSend === false) {
+
+            let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
+
+            console.log(userReceiver);
+            if (userReceiver === null) {
+                //  throw createError(408, 'Not found account number');
+                next({ error: { message: "Not found account number", code: 422 } });
+                return;
+            }
+            let nameReceiver = userReceiver.accountName;
+
+            let token = otp.generateOTP();
+            let object = `
+            You can use our Internet Banking services at our website "http://www.mpbank.com.vn" right after receiving this email.`
+
+            let b = `This password will expire in 5 minutes..`
+
+            let c = ` Do not reply to this automatically-generated email. If you have any questions, please contact MPBank Contact Center via number 0334994998 or our branches`
+
+            let d = ` Thank you for using our services.`
+            let a = '<p>You are making a bank transfer in MPBank Internet Banking. </b> <ul><li> Your transaction code is <h1>' + token + '</h1></li> <li>' + object + '</li> <li>' + b + '</li>  <li>' + c + '</li><li>' + d + '</li>  </ul>'
+
+            client.setex(userId, 300, token, function (err) {
+
+                console.error(err);
+            });
+
+
+
+            mailer.sentMailer("mpbank.dack@gmail.com", { email }, "MPBank Transfer", a)
+                .then(async (json) => {
+                    console.log(token);
+                    console.log(json);
+
+                    let data = { sender, nameReceiver, message: "send otp email ", content, amountMoney, typeSend, receiver }
+                    res.status(200).json({ result: data });
+                })
+
+        } else {
+            next({ error: { message: "type  cannot  suit", code: 422 } });
+            return;
+        }
+
+        // } catch (err) {
+        //     next(err);
+        // }
 
 
     },
@@ -192,21 +211,21 @@ module.exports = {
 
         let { code, receiver, amountMoney, content, typeSend } = req.body;
 
-        console.log(req.body);
+
         let userSender = await bankAccount.findOne({ userId });
 
         if (userSender == null) {
             next({ error: { message: "invalid correct", code: 422 } });
         }
 
-        console.log(code);
+
         try {
 
             client.get(userId, async function (err, value) {
                 if (err) {
                     next({ error: { message: "time otp expire", code: 422 } });
                 }
-                console.log("mo", value);
+                console.log('1', value)
                 if (value === code) {
 
                     let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
@@ -232,9 +251,9 @@ module.exports = {
                         }
 
                         await userReceiver.save();
-                        console.log(userReceiver);
+
                         await userSender.save();
-                        console.log(userSender);
+
 
                         let newTransaction = new transaction({
                             bankAccountSender: userSender.accountNumber,
@@ -247,10 +266,14 @@ module.exports = {
                             status: "SUCCESS",
                         })
                         await newTransaction.save();
-
+                        let re = await receiverInfo.findOne({ numberAccount: receiver });
+                        let type = false;
+                        if (re === null) {
+                            type = true;
+                        }
 
                         let pro = {
-                            userReceiver, userSender, newTransaction, msg: "transfer success"
+                            userReceiver, userSender, newTransaction, msg: "transfer success", type
                         };
                         res.status(200).json({ result: pro });
 
@@ -280,12 +303,16 @@ module.exports = {
         //     "nameRemind":"huong huong"
         // }
         let { accountNumber, accountName, idBank, nameRemind } = req.body
-        console.log(req.body);
+        console.log(req.body)
+        nameRemind = nameRemind || '';
         let number = await receiverInfo.findOne({ accountNumber });
         if (number) {
             next({ error: { message: "account number exit ", code: 422 } });
         }
-
+        let bank = await linkedBank.findById({ _id: idBank });
+        if (!bank) {
+            next({ error: { message: "account number exit ", code: 422 } });
+        }
         // if (
         //     typeof req.body.accountNumber === 'undefined' ||
         //     typeof req.body.accountName === 'undefined'
@@ -300,14 +327,15 @@ module.exports = {
             nameAccount: accountName,
             userId: userId,
             idBank: idBank,
+            nameBank: bank.nameBank,
             nameRemind: nameRemind
-
 
         })
         try {
 
             await saveInfo.save();
-            res.status(200).json({ result: saveInfo });
+            let object = { msg: 'save information receiver in success', saveInfo }
+            res.status(200).json({ result: object });
         } catch (err) {
             next(err);
         }

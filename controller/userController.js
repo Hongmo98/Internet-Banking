@@ -304,8 +304,17 @@ module.exports = {
         }
 
         let token = otp.generateOTP();
+        let object = `
+        You can use our Internet Banking services at our website "http://www.mpbank.com.vn" right after receiving this email.`
 
-        mailer.sentMailer("mpbank.dack@gmail.com", { email }, "đổi mật khẩu", token)
+        let b = `This password will expire in 24 hours. For your rights and safety, we suggest you to change your password immediately.`
+
+        let c = ` Do not reply to this automatically-generated email. If you have any questions, please contact MPBank Contact Center via number 0334994998 or our branches`
+
+        let d = ` Thank you for using our services.`
+        let a = '<p>We would like to inform you that your Internet Banking password has been reset at your request. </b> <ul><li>Your OTP is <h1>' + token + '</h1></li> <li>' + object + '</li> <li>' + b + '</li>  <li>' + c + '</li><li>' + d + '</li>  </ul>'
+
+        mailer.sentMailer("mpbank.dack@gmail.com", { email }, "MPBank ForgotPassword", a)
             .then(async (json) => {
 
                 currentUser.TOKEN = token;
