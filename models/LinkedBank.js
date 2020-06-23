@@ -8,6 +8,7 @@ const linkedBankSchema = ({
     public: String,
     partnerCode: String,
     partnerMe: String,
+    isDelete: { type: Boolean, default: false },
 })
 
 mongoose.model('linkedBank', linkedBankSchema);

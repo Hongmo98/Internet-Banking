@@ -22,6 +22,7 @@ client.auth('Z9qiKNw7XcCx1AgrFJMdpC81DO8Betle', function (err) {
 
 });
 
+const pub = `-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: Keybase OpenPGP v1.0.0\nComment: https://keybase.io/crypto\n\nxo0EXsSoRgEEAMY1xjujGbJflS/dzCjPw1CcZVPr5vMxOXcS7IXA4Qp4Ndsa/pPa\n26r1NNafBxfJ/lkSBj/KWGFPqsjd6U25LY2VsNeWgh9bct7tTQN0m9pOBU9Iu6tu\nm+gBbNell5XmT58dL3HAowB+7/oIFRkd5oQzv5WS4gSuZLn5mk+EP+/VABEBAAHN\nInMycSA8YXF1YXJpdXMuc3VwZXJzdGFyQGdtYWlsLmNvYT7CrQQTAQoAFwUCXsSo\nRgIbLwMLCQcDFQoIAh4BAheAAAoJEDu4fPTvbOqwjR8D/ixHYS2mFBiRbu3Ug40l\nCLXOE2yj9yeDG46HCk2dPVfLzECKA65GqHafVWLK/UaN9jXSkGZS5Sqb6LXCX0IZ\ng1QG6TWhLqX0ZkXmln7HV5hoaDpwgSz4cInYYcvvqN7AR3HmYl0A6AFwlsc3jc11\ndjIJMZK7dAaLE+QjG2i0DWWZzo0EXsSoRgEEANstPC8XvKdPT9iRUPlYYp+UhSI8\nBS08InoxXgzZSajjnMhg7RcJKIqRkTebjYfmzPnWfeuypQ5vOakU4HqyCReRhTtG\ngH/ifWEueJxK3IbQieXmooH4G/Z0461Hu8IRVAJ23RqRxzQ9M/Nse+1Wu3q80//F\npm55Yiy9DWzT+63VABEBAAHCwIMEGAEKAA8FAl7EqEYFCQ8JnAACGy4AqAkQO7h8\n9O9s6rCdIAQZAQoABgUCXsSoRgAKCRCFvqQSd53migEXA/98RpHKCbHHpLuKcjBi\nn8D9WlZunKvj8mWsE2Ftkt7H4RcyR2hDgcr+oFgu9ADe/Ll8s7L2cQYet+BbKycg\ne00z9evwiNExPrlZww3BRLsy3q3Uy7Anv7mCCdArVpOKoL7XGj9tCNs89v5C8GWE\nLxiUFmCQzWM3Os6wR9SNjgJkBy1NA/9xE3m0Y7x2L9F5R/GSJA1vVr1Ac0FuJ9Ly\nqJSzdE1y+r96PtpBfjhOFpk66EIey7EzZVmbAQ/Kd6mvbMWb6wDZe/RDWUMRa3XY\n5m1bHRdbHdKgkW207FtdLC7sJbjK6xOdYMKbjionYTd9Lm/O9I1qn838Xn1wVfxd\nWE4u6pMGOc6NBF7EqEYBBADFKe9ofAyxC3xuZXmPDpB4fVZvNbJC9kD7jpSGF3hQ\nWVbZs919ayEa8TN4Gfc55o7/EdOhwOIFE2Z4jeKqCg4pHB2ke72f+yIKpNc9EtT4\nj9i3ca7U68lMhKiyYIg/UymxfUIm94FI8FF37gmRwX3T9l/XVa52RNtgBxhlhtIH\nOQARAQABwsCDBBgBCgAPBQJexKhGBQkPCZwAAhsuAKgJEDu4fPTvbOqwnSAEGQEK\nAAYFAl7EqEYACgkQD5yWPgOTuIJa1gP/SbAIEmA9oN4cv76IbKggQbwAnS6hwEcn\nzTNa1jfmma3dty5mQ3GjK3ENc4GKqyfy9Pyi2BPLLcsu78mAcqwEtnuhd8mnZuSm\nXSG7E2T/LhIP5EbGecKpk9eF9fNKrxVTd8D2qNvxefGJcifby81bGMMRYuu9Zl9Y\nLd8LdseGd1AZVwP+JS8IgIWEIfAG/Q+nuEAoC98ze5tbyJUqgxBn56tbwU1+txzr\n43+aoUDKL00HUaM5N3IaTUpMayh3ooy+lWoQipPmHal3UkMHmpyDDi7QJcDUQlh6\nbh3tyULIj1Bwr6W1wq6HqV4eUSuSPBfljHTvTq2VEmD1gTddJ8Tiq2F9A3Y=\n=3bra\n-----END PGP PUBLIC KEY BLOCK-----`
 
 const private = `-----BEGIN RSA PRIVATE KEY-----
 MIICWgIBAAKBgFHQ+NlOAcSzcr41rFJ8lX0K9tTHsYziDhIt0mBC4/X5iuAkBma6
@@ -406,27 +407,41 @@ module.exports = {
     linkBankAccount: async (req, res, next) => {
         let { userId, role } = req.tokePayload;
 
+        if (
+            typeof req.body.receiver === "undefined" ||
+            typeof req.body.nameBank === "undefined" ||
+            typeof req.body.typeSend === "undefined" ||
+            typeof req.body.amountMoney === "undefined"
+
+        ) {
+            next({ error: { message: "Invalid data", code: 422 } });
+            return;
+        }
+
         let sender = await bankAccount.findOne({ userId });
         let numberSender = sender.accountNumber;
         let email = sender.email;
         console.log(numberSender);
+        console.log(email);
 
         if (sender == null) {
             next({ error: { message: "Invalid data", code: 422 } });
             return;
         }
+        console.log(sender);
 
-        // {
-        //     "nameBank":"NKLBank",
-        //     "receiver":"12345",
-        //     "typeSend":true,
-        //     "amountMoney":20000,
-        //     "content":"hehe"
-        // }
+
         let token = otp.generateOTP();
-        let info = null;
-        const partner_code = req.headers["partner_code"];
+        console.log('token', token);
+        // let info = null;
+        const partner_code = "MtcwLbASeIXVnKurQCHrDCmsTEsBD7rQ44wHsEWjWtl8k";
         let { nameBank, content, amountMoney, receiver, typeSend } = req.body;
+        if (content === ' ') {
+            content = `${sender.accountName} transfer`;
+        }
+        console.log(req.body)
+        // res.status(200).json({ result: true });
+
         if (nameBank === "NKLBank") {
             let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
             const timestamp = moment().toString();
@@ -434,6 +449,7 @@ module.exports = {
             let source_account = '3234';
             let target_account = receiver;
             const data = { transaction_type, source_account, target_account };
+
             const secret_key = config.SECRET_KEY;
             console.log(data);
             const hash = CryptoJS.AES.encrypt(
@@ -446,6 +462,7 @@ module.exports = {
                 timestamp: timestamp,
                 api_signature: hash,
             };
+            console.log(_headers);
 
             try {
 
@@ -458,6 +475,7 @@ module.exports = {
                         )
                         .then(async function (response) {
                             let info = response.data;
+                            let fullName = inf.fullName;
 
                             client.setex(userId, 100, token, function (err) {
 
@@ -466,22 +484,28 @@ module.exports = {
                             mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
                                 .then(async (json) => {
                                     let dataReceiver = { content, amountMoney, typeSend, nameBank }
-                                    let data = { sender, info, dataReceiver, message: "send otp email " }
+                                    let data = { sender, fullName, dataReceiver, message: "send otp email " }
 
                                     console.log(json);
+                                    res.status(200).json({ result: data });
 
 
 
                                 })
 
-                            let data = { sender, info }
-                            res.status(200).json({ result: data });
+                            // let data = { sender, info }
+                            // console.log(data);
+
                             // res.status(200).json({ result: info })
 
 
                         })
                         .catch(function (error) {
-                            next(error.response);
+                            // next(error.response.data);
+                            console.log(error.response.data.msg);
+                            next({ error: { message: error.response.data.msg, code: 422 } });
+                            return;
+
 
                         });
                 request(data, null, _headers, res);
@@ -497,16 +521,24 @@ module.exports = {
             // res.status(200).json({ result: a });
         }
         else {
+            console.log('s0');
             let account_number = receiver;
-            let dataInfo = await getInfo(account_number);
-            client.setex(userId, 100, token, function (err) {
+            let info = await getInfo(account_number);
+
+            if (info === 'Error') {
+                next({ error: { message: "not found account", code: 422 } });
+                return;
+            }
+            let fullName = info.full_name;
+            console.log('2', info)
+            client.setex(userId, 300, token, function (err) {
 
                 console.error(err);
             });
             mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
                 .then(async (json) => {
-                    let dataReceiver = { content, amountMoney, typeSend }
-                    let data = { sender, dataInfo, dataReceiver, message: "send otp email " }
+                    let dataReceiver = { content, amountMoney, typeSend, nameBank, receiver }
+                    let data = { sender, fullName, dataReceiver, message: "send otp email " }
 
                     console.log(json);
 
@@ -739,15 +771,27 @@ module.exports = {
         }
     },
     infomationU: async (req, res, next) => {
+        // let id = req.body.id;
+        // let a = await information.findById(id);
+        // a.linkRSA = private;
+        // a.partnerRSA = config.SECRET_KEYRSA;
+        // await a.save();
         let id = req.body.id;
-        let a = await information.findById(id);
-        a.linkRSA = private;
-        a.partnerRSA = config.SECRET_KEYRSA;
+        let a = await linkedBank.findById(id);
+        a.public = pub;
+        a.partnerMe = 's2qbank';
         await a.save();
         res.status(200).json({ result: a });
 
     },
+    getNameBankLink: async (req, res, next) => {
 
+        const { role, userId } = req.tokePayload;
+        let bank = await linkedBank.find({ isDelete: false });
+        console.log(bank);
+        res.status(200).json({ result: bank });
+
+    }
 }
 getSenderMoney = async (data, amountMoney, typeSend, sender) => {
     let senderMoney = +sender.currentBalance;
@@ -833,10 +877,15 @@ const getInfo = async (account_number) => {
         console.log(response.data);
         return response.data;
     } catch (error) {
-        console.log(error);
+        console.log("err", error);
+
+        return error.name;
     }
 }
 
+// const getData = (data) => {
+//     return data;
+// }
 
 
 

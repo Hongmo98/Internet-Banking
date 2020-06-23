@@ -12,6 +12,8 @@ var createError = require('http-errors')
 var bcrypt = require("bcrypt");
 const config = require('./../config/key');
 const redis = require("redis");
+const moment = require('moment');
+
 // const src = 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com:13088';
 const client = redis.createClient('13088', 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com', { no_ready_check: true });
 client.auth('Z9qiKNw7XcCx1AgrFJMdpC81DO8Betle', function (err) {
@@ -31,6 +33,8 @@ const ObjectId = mongoose.Types.ObjectId;
 
 const mailer = require("../utils/Mailer");
 const otp = require("../utils/otp");
+const e = require("express");
+const { CLIENT_RENEG_LIMIT } = require("tls");
 
 module.exports = {
 
@@ -107,7 +111,7 @@ module.exports = {
             let d = ` Thank you for using our services.`
             let a = '<p>You are making a bank transfer in MPBank Internet Banking. </b> <ul><li> Your transaction code is <h1>' + token + '</h1></li> <li>' + object + '</li> <li>' + b + '</li>  <li>' + c + '</li><li>' + d + '</li>  </ul>'
 
-            client.setex(userId, 300, token, function (err) {
+            client.setex(userId, 100, token, function (err) {
 
                 console.error(err);
             });
@@ -209,7 +213,7 @@ module.exports = {
             return;
         }
 
-        let { code, receiver, amountMoney, content, typeSend } = req.body;
+        let { code, receiver, amountMoney, content, typeSend, typeTransaction, idRemind } = req.body;
 
 
         let userSender = await bankAccount.findOne({ userId });
@@ -221,68 +225,78 @@ module.exports = {
 
         try {
 
-            client.get(userId, async function (err, value) {
+            client.get(userId, async (err, value) => {
                 if (err) {
+                    console.log(err);
                     next({ error: { message: "time otp expire", code: 422 } });
-                }
-                console.log('1', value)
-                if (value === code) {
+                    return;
+                } {
+                    console.log('1', value)
+                    if (value === code) {
 
-                    let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
-                    if (userReceiver == null) {
-                        next({ error: { message: "invalid correct", code: 422 } });
-                    }
-                    let money = +amountMoney;
-
-                    let feeTransfer = + 2200;
-                    let service = money + feeTransfer + 50000;
-
-                    if (+userSender.currentBalance > service) {
-                        if (typeSend === false) {
-
-                            userReceiver.currentBalance = +userReceiver.currentBalance + money - feeTransfer;
-
-                            userSender.currentBalance = + userSender.currentBalance - money;
+                        let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
+                        if (userReceiver == null) {
+                            next({ error: { message: "invalid correct", code: 422 } });
                         }
-                        else {
-                            userReceiver.currentBalance = +userReceiver.currentBalance + money;
+                        let money = +amountMoney;
 
-                            userSender.currentBalance = + userSender.currentBalance - money - feeTransfer;
+                        let feeTransfer = + 2200;
+                        let service = money + feeTransfer + 50000;
+
+                        if (+userSender.currentBalance > service) {
+                            if (typeSend === false) {
+
+                                userReceiver.currentBalance = +userReceiver.currentBalance + money - feeTransfer;
+
+                                userSender.currentBalance = + userSender.currentBalance - money;
+                            }
+                            else {
+                                userReceiver.currentBalance = +userReceiver.currentBalance + money;
+
+                                userSender.currentBalance = + userSender.currentBalance - money - feeTransfer;
+                            }
+
+                            await userReceiver.save();
+
+                            await userSender.save();
+
+
+                            let newTransaction = new transaction({
+                                bankAccountSender: userSender.accountNumber,
+                                bankAccountReceiver: receiver,
+                                amount: amountMoney,
+                                content: content,
+                                typeSend: typeSend,
+                                typeTransaction: typeTransaction,
+                                fee: 2200,
+                                status: "SUCCESS",
+                            })
+                            if (typeTransaction === 'INDEPT') {
+                                let deptTra = await deptInformation.findById({ _id: ObjectId(idRemind) })
+
+                                deptTra.status = "PAYED"
+                                await deptTra.save();
+                                console.log('save', deptTra)
+                            }
+                            await newTransaction.save();
+                            let re = await receiverInfo.findOne({ numberAccount: receiver });
+                            let type = false;
+                            if (re === null) {
+                                type = true;
+                            }
+
+                            let pro = {
+                                userReceiver, userSender, newTransaction, msg: "transfer success", type
+                            };
+                            res.status(200).json({ result: pro });
+
+                        } else {
+                            next({ error: { message: "current balance isn't to transfer money", code: 422 } });
                         }
-
-                        await userReceiver.save();
-
-                        await userSender.save();
-
-
-                        let newTransaction = new transaction({
-                            bankAccountSender: userSender.accountNumber,
-                            bankAccountReceiver: receiver,
-                            amount: amountMoney,
-                            content: content,
-                            typeSend: typeSend,
-                            typeTransaction: "TRANSFER",
-                            fee: 2200,
-                            status: "SUCCESS",
-                        })
-                        await newTransaction.save();
-                        let re = await receiverInfo.findOne({ numberAccount: receiver });
-                        let type = false;
-                        if (re === null) {
-                            type = true;
-                        }
-
-                        let pro = {
-                            userReceiver, userSender, newTransaction, msg: "transfer success", type
-                        };
-                        res.status(200).json({ result: pro });
 
                     } else {
-                        next({ error: { message: "current balance isn't to transfer money", code: 422 } });
+                        next({ error: { message: "otp exit ", code: 422 } });
                     }
-
-                } else {
-                    next({ error: { message: "otp exit ", code: 422 } });
                 }
             });
 
@@ -344,17 +358,53 @@ module.exports = {
     receiverTransfer: async (req, res, next) => {
 
         let { userId } = req.tokePayload;
-        try {
-            let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false });
+        let { type, idBank } = req.query;
+        let conditionQuery = {
+            $and: [{
+                userId: ObjectId(userId)
+            },
+            { isDelete: { $nin: [true] } },
 
+            ]
+        };
+        if (type === 'mpbank') {
 
+            let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false, idBank: ObjectId(idBank) });
             res.status(200).json({ result: receiver });
-
         }
-        catch (err) {
+        else {
+            let conditionQuery = {
+                $and: [{
+                    userId: ObjectId(userId)
+                },
+                { isDelete: { $nin: [true] } },
+                { idBank: { $nin: [ObjectId(idBank)] } }
+                ]
+            };
 
 
+            let e = await receiverInfo.aggregate([
+                { $match: conditionQuery },
+
+            ])
+            res.status(200).json({ result: e });
         }
+
+
+        // else {
+        //     let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false });
+        //     let receiver1 = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false, idBank: ObjectId(idBank) });
+
+        //     const result = receiver.filter(item => receiver1.indexOf(ele => ele._id === item.id) === -1)
+        //     // let a = receiver.filter((e) => e.idBank === idBank)
+        //     // console.log(a);
+        //     console.log(result)
+
+
+        // res.status(200).json({ result: result });
+
+
+
 
 
     },
@@ -401,12 +451,12 @@ module.exports = {
         let id = req.body.id;
         delete objectUpdate["id"];
         try {
-            let e = await receiverInfo.findOneAndUpdate({ _id: ObjectId(id), userId: ObjectId(userId) }, objectUpdate);
+            let receiver = await receiverInfo.findOneAndUpdate({ _id: ObjectId(id), userId: ObjectId(userId) }, objectUpdate, { new: true });
 
             if (!e) {
                 return next({ error: { message: 'receiver not exists!' } });
             }
-            res.status(200).json({ result: e });
+            res.status(200).json({ result: receiver });
         } catch (error) {
             next({ error: { message: 'Err', code: 601 } });
         }
@@ -416,21 +466,12 @@ module.exports = {
 
 
     },
-    // idBankAccount : Schema.Types.ObjectId,
-    // bankAccountSender: String,
-    // bankAccountReceiver: String,
-    // amount: Number,
-    // contentNotification: String,
-    // isRead: Boolean,
-    // isDelete: Boolean,
-    // createAt: { type: Date, default: Date() },
-    // updateAt: Date
 
     requestDept: async (req, res, next) => {
-        let { userId, role } = req.body;
+        let { userId, role } = req.tokePayload;
 
         // {
-        //     "numberAccount" :"1591961683264",  
+        //     "numberAccount" :"1592105265271",  
         //     "amountMoney":"20000",
         //      "content":"m con no tao nhe"
         // }  
@@ -439,9 +480,10 @@ module.exports = {
             let sender = await bankAccount.findOne({ userId });
 
             if (sender == null) {
-                next({ error: { message: "Invalid data", code: 422 } });
+                next({ error: { message: "account not found ", code: 422 } });
                 return;
             }
+            console.log("1", sender);
             let number = await bankAccount.findOne({ accountNumber: numberAccount });
 
             if (number == null) {
@@ -455,15 +497,13 @@ module.exports = {
                 contentNotification: content,
 
             })
-            // bankAccountSender: String,
-            // bankAccountReceiver: String,
-            // amount: Number,
-            // // PAY , UNPAY
-            // status:  { type: String, "index": "text", default: "UNPAY" },
-            let deptInfo = new deptReminder({
+
+            let deptInfo = new deptInformation({
                 bankAccountSender: sender.accountNumber,
                 bankAccountReceiver: numberAccount,
-                amount: amountMoney
+                amount: amountMoney,
+                content: content
+
             })
             await deptUser.save();
             await deptInfo.save();
@@ -475,26 +515,45 @@ module.exports = {
         }
     },
 
-    notificationDept: async (req, res, next) => {
+    getListNotification: async (req, res, next) => {
         let { userId, role } = req.tokePayload;
+        try {
 
-        client.set(userId, '42', function (err) {
-            if (err) {
-                throw err; /* in production, handle errors more gracefully */
-            }
-            else {
-                client.get(userId, function (err, value) {
-                    if (err) {
-                        throw err;
-                    } else {
-                        console.log(value);
-                        res.status(200).json({ value });
-                    }
-                }
-                );
-            }
-        });
+            let sender = await bankAccount.findOne({ userId });
 
+            if (sender == null) {
+                next({ error: { message: "Invalid data", code: 422 } });
+                return;
+            }
+            console.log('2', sender.accountNumber);
+            let notification = await deptReminder.find({ bankAccountReceiver: sender.accountNumber, isDelete: false });
+
+            console.log('1', notification);
+            res.status(200).json({ result: notification });
+
+
+        } catch (err) {
+            next(err);
+
+        }
+
+
+
+    },
+    getBadgeNumber: async (req, res, next) => {
+        let { userId, role } = req.tokePayload;
+        let sender = await bankAccount.findOne({ userId });
+
+        if (sender == null) {
+            next({ error: { message: "Invalid data", code: 422 } });
+            return;
+        }
+        try {
+            let notifications = await deptReminder.find({ bankAccountReceiver: sender.accountNumber, isRead: false, isDelete: false });
+            return res.status(200).json({ result: notifications.length });
+        } catch (err) {
+            next(err);
+        }
     },
     showDeptRemindUnPay: async (req, res, next) => {
         let { userId, role } = req.tokePayload;
@@ -519,32 +578,30 @@ module.exports = {
     showDeptRemind: async (req, res, next) => {
         let { userId, role } = req.tokePayload;
         try {
+            let sender = await bankAccount.findOne({ userId });
+
+            if (sender == null) {
+                next({ error: { message: "Invalid data", code: 422 } });
+                return;
+            }
 
             let dept = await deptInformation.find({ bankAccountSender: sender.accountNumber, isDelete: false });
+
             if (dept == null) {
                 next({ error: { message: "Invalid list dept", code: 422 } });
                 return;
             }
 
-            res.status(200).json({ result: dept, deptUser });
+            res.status(200).json({ result: dept });
         } catch (err) {
             next(err);
         }
 
     },
-    //     getListNotification: async(req, res, next) => {
-    //         let { userId, role } = req.tokePayload;
-    //         try {
-    //             let sender = await bankAccount.findOne({ userId });
 
-    //             if (sender == null) {
-    //                 next({ error: { message: "Invalid data", code: 422 } });
-    //                 return;
-    //             }
-
-    //         } catch (err) {
-    //             next(err);
-    //         }
+    // {
+    //     "reminderId":"5ee998a966202628f4ab1654",
+    //     "content":" t xoa nhac no nha "
     // }
     deleteReminder: async (req, res, next) => {
         if (typeof req.body.reminderId === 'undefined') {
@@ -552,15 +609,36 @@ module.exports = {
             return;
         }
 
-        let { reminderId } = req.body;
+        let { reminderId, content } = req.body;
         let { userId } = req.tokePayload;
 
         try {
-            let reminder = await deptInformation.findById({ id: reminderId });
+            let sender = await bankAccount.findOne({ userId });
+
+            if (sender == null) {
+                next({ error: { message: "Invalid data", code: 422 } });
+                return;
+            }
+            let reminder = await deptInformation.findById({ _id: reminderId });
             reminder.isDelete = true;
+            let deptUser = null;
+            let reCe = null;
+            if (reminder.bankAccountSender === sender.accountNumber) {
+                reCe = reminder.bankAccountReceiver;
+            } else {
+                reCe = reminder.bankAccountSender;
+            }
+
+            deptUser = new deptReminder({
+                bankAccountSender: sender.accountNumber,
+                bankAccountReceiver: reCe,
+                contentNotification: content,
+            })
 
             await reminder.save();
-            return res.status(200).json({ msg: "delete success" });
+            await deptUser.save();
+
+            return res.status(200).json({ msg: "delete success", reminder, deptUser });
         } catch (err) {
             next(err);
         }
@@ -604,7 +682,30 @@ module.exports = {
         } catch (err) {
 
         }
-    }
+    },
+    updateReminder: async (req, res, next) => {
+        let { userId } = req.tokePayload;
+        let objectUpdate = { ...req.body };
+        let id = req.body.id;
+        delete objectUpdate["id"];
+        try {
+            let e = await deptInformation.findOneAndUpdate({ _id: ObjectId(id), userId: ObjectId(userId) }, objectUpdate);
+
+            if (!e) {
+                return next({ error: { message: 'receiver not exists!' } });
+            }
+            res.status(200).json({ result: e });
+        } catch (error) {
+            next({ error: { message: 'Err', code: 601 } });
+        }
+
+
+
+
+
+    },
+
+
 }
 
 

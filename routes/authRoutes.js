@@ -15,9 +15,9 @@ router.get('/logout', verify, controllerUser.logout);
 
 
 // auth
-router.get('/user', verify, controllerUser.getUserCurrent);
-router.get('/information', verify, controllerUser.getInfo);
-router.get('/accountNumber', verify, controllerUser.getAccountNumber)
-router.post('/updatePassword', verify, controllerUser.updatePassword);
+router.get('/user', verify('CUSTOMER'), controllerUser.getUserCurrent);
+router.get('/information', verify('CUSTOMER'), controllerUser.getInfo);
+router.get('/accountNumber', verify('CUSTOMER'), controllerUser.getAccountNumber)
+router.post('/updatePassword', verify('CUSTOMER'), controllerUser.updatePassword);
 
 module.exports = router;

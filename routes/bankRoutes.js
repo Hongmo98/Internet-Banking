@@ -20,4 +20,7 @@ router.post('/linkBankAccount', verify, bankController.linkBankAccount);
 router.post('/transferBankAccount', verify, bankController.transferBankAccount);
 router.post('/verifyOTP', verify, bankController.verifyOTP);
 router.post('/infomation', bankController.infomationU)
+
+
+router.get('/getNameBankLink', verify, bankController.getNameBankLink)
 module.exports = router;

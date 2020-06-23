@@ -207,15 +207,16 @@ module.exports = {
         console.log(id);
         try {
             let u = await user.findById({ _id: id });
-            console.log(u);
-            res.status(200).json({ result: u });
+            let userSender = await bankAccount.findOne({ userId: ObjectId(id) });
+            let dataSent = { userSender, u };
+            res.status(200).json({ result: userSender });
         } catch (err) {
             next(err);
         }
     },
     getInfo: async (req, res, next) => {
         let { userId, role } = req.tokePayload;
-        let { accountNumber, typeAccount } = req.query;
+
         if (
             typeof req.query.accountNumber === "undefined"
 
@@ -229,7 +230,7 @@ module.exports = {
         let userCurrent = null;
         try {
 
-            userCurrent = await bankAccount.find({ userId: ObjectId(userId), typeAccount: typeAccount, accountNumber: accountNumber });
+            userCurrent = await bankAccount.find({ userId: ObjectId(userId) });
             if (userCurrent === null) {
                 next({ error: { message: "not found user", code: 402 } });
                 return;
@@ -387,24 +388,18 @@ module.exports = {
         let { userId, role } = req.tokePayload;
 
         let { typeAccount } = req.query;
-        console.log(req.query);
-        if (
-            typeof req.query.typeAccount === "undefined"
 
-        ) {
-            next({ error: { message: "Invalid data", code: 402 } });
-            return;
-
-        }
         let userAccount = null;
         try {
-            userAccount = await bankAccount.find({ userId: ObjectId(userId), typeAccount: typeAccount })
-            if (userAccount === null) {
-                next({ error: { message: "not found user", code: 402 } });
-                return;
-            }
+            if (typeAccount) {
+                userAccount = await bankAccount.find({ userId: ObjectId(userId), typeAccount: typeAccount })
 
-            res.status(200).json({ result: userAccount })
+                res.status(200).json({ result: userAccount })
+            } else {
+                userAccount = await bankAccount.find({ userId: ObjectId(userId) })
+
+                res.status(200).json({ result: userAccount })
+            }
 
 
         } catch (err) {

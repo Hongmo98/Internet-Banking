@@ -12,12 +12,12 @@ const transactionSchema = new Schema({
     // nguoi nhan tra phi: true 
     // nguoi gui tra phi: false
     typeSend: Boolean,
-    nameBank: { type: String, "index": "text", default: "MPBank" },
+    idBank: Schema.Types.ObjectId,
     CodeOTP: String,
     timeOTP: { type: Date, default: Date.now },
     typeTransaction: String,
     fee: Number,
-    createAt: { type: Date, default: Date.now },
+    createAt: { type: Date },
 })
 
 mongoose.model('transaction', transactionSchema);

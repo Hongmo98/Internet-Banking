@@ -21,15 +21,10 @@ module.exports = {
     registerAccount: async (req, res, next) => {
 
         // {
-        //     "fullName": "vu han linh",
-        //         "email": "hanlinh010198@gmail.com",
-        //             "phone": "0352349848",
-        //                 "password": "vu han linh"
+        //         "fullName": "vu han linh",
+        //             "email": "hanlinh010198@gmail.com",
+        //                 "phone": "0352349848",}
 
-        // 
-        //     "email": "hongmo241198@gmail.com",
-        //         "password": "nguyen thi hong mo"
-        // 
         let { fullName, email, phone } = req.body;
         let { role, userId } = req.tokePayload;
         let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
@@ -48,9 +43,10 @@ module.exports = {
         if (role === 'EMPLOYEE') {
             let userFind = null;
             let accountNumber = generateAccountNumber();
+            console.log(accountNumber);
 
             let userName = generateUserName();
-
+            console.log(userName);
             let password = generatePassword();
 
             let hashPass = bcrypt.hashSync(password, 10);
@@ -86,7 +82,7 @@ module.exports = {
 
 
             await newUser.save();
-            console.log(newUser);
+
             let objUser = { newUser, saveLoginUser }
 
             return res.status(200).json({ result: objUser });

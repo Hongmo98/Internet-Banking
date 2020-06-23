@@ -14,21 +14,21 @@ router.post('/verifyOTP', verify, transferController.verifyOTP);
 
 
 // list Receiver
-router.post('/receivers', verify, transferController.saveReceive);
-router.get('/receiver', verify, transferController.receiverTransfer);
-router.post('/receiver', verify, transferController.deleteReceiver);
-router.get('/receiverInformation', verify, transferController.receiverInformation)
-router.post('/updateReceiver', verify, transferController.updateReceiver);
+router.post('/receivers', verify('CUSTOMER'), transferController.saveReceive);
+router.get('/receiver', verify('CUSTOMER'), transferController.receiverTransfer);
+router.post('/receiver', verify('CUSTOMER'), transferController.deleteReceiver);
+router.get('/receiverInformation', verify('CUSTOMER'), transferController.receiverInformation)
+router.post('/updateReceiver', verify('CUSTOMER'), transferController.updateReceiver);
 // remind dept
-
-router.post('/requestDept', verify, transferController.requestDept);
-router.get('/showDeptRemindUnPay', verify, transferController.showDeptRemindUnPay);
-router.get('/showDeptRemind', verify, transferController.showDeptRemind);
-router.get('/notificationDept', verify, transferController.notificationDept)
-// router.get('/getListNotification',verify,transferController.getListNotification)
-router.post('/deleteReminder', verify, transferController.deleteReminder);
-router.post('/transferReminder', verify, transferController.transferReminder);
-
+//nhac nho
+router.post('/requestDept', verify('CUSTOMER'), transferController.requestDept);
+router.get('/showDeptRemindUnPay', verify('CUSTOMER'), transferController.showDeptRemindUnPay);
+router.get('/showDeptRemind', verify('CUSTOMER'), transferController.showDeptRemind);
+router.get('/getBadgeNumber', verify('CUSTOMER'), transferController.getBadgeNumber)
+router.get('/getListNotification', verify('CUSTOMER'), transferController.getListNotification)
+router.post('/deleteReminder', verify('CUSTOMER'), transferController.deleteReminder);
+router.post('/transferReminder', verify('CUSTOMER'), transferController.transferReminder);
+router.post('/updateReminder', verify('CUSTOMER'), transferController.updateReminder);
 
 router.get('/test', transferController.test);
 router.get('/test1', transferController.test1);

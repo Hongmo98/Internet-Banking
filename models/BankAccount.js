@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
-
+const moment = require("moment");
 const bankAccountSchema = new Schema({
     accountNumber: String,
     accountName: String, // fullname cua khach hang
@@ -14,6 +14,7 @@ const bankAccountSchema = new Schema({
     typeAccount: { type: String, "index": "text", default: "Credit" },
     hashPassword: String,
     userId: Schema.Types.ObjectId,
+    iat: { type: Number },
 
 })
 
