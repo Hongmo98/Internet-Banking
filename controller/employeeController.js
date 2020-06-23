@@ -155,6 +155,68 @@ module.exports = {
         }
 
     },
+    historyTransactionSender: async (req, res, next) => {
+        let { typeTransaction,
+            startDate,
+            endDate,
+            pageNumber,
+            numberRecord,
+        } = req.query;
+        startDate = startDate || "";
+        pageNumber = +pageNumber || 1;
+        numberRecord = +numberRecord || 10;
+        try {
+            let userSender = await bankAccount.findOne({ userId });
+            if (userSender === null) {
+                next({ error: { message: "Not found account", code: 422 } });
+            }
+            let conditionQuery = {
+                $and: [{
+
+                },
+                ]
+            };
+            if (typeTransaction) {
+                if (typeTransaction === "GETMONEY") {
+                    conditionQuery.$and.push({ typeTransaction });
+
+                }
+                else if (typeTransaction === "TRANSFER") {
+                    conditionQuery.$and.push({ typeTransaction });
+
+                } else {
+                    conditionQuery.$and.push({ typeTransaction });
+
+                }
+            }
+            if (startDate !== "") {
+                conditionQuery.$and.push({
+                    'createAt': {
+                        $gt: new Date(startDate)
+                    }
+                })
+                if (endDate) {
+                    conditionQuery.$and.push({
+                        'createAt': {
+                            $lte: new Date(endDate),
+                        }
+                    })
+                }
+            }
+            let e = await transaction.aggregate([
+                { $match: conditionQuery },
+                { $skip: +numberRecord * (+pageNumber - 1) },
+                { $limit: +numberRecord },
+                { $sort: { 'createAt': 1 } }
+            ])
+            res.status(200).json({ result: e });
+        }
+        catch (err) {
+            next(err);
+        }
+
+
+    }
 
 }
 
