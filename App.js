@@ -31,6 +31,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 require('./middlewares/loadMongoose');
+require('./utils/ws')
 
 
 

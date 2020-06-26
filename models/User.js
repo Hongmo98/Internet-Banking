@@ -14,6 +14,7 @@ const userSchema = new Schema({
     hashPassword: String,
     role: { type: String, "index": "text", default: "CUSTOMER" },
     TOKEN: String,
+    isDelete: { type: Boolean, default: false },
 })
 
 mongoose.model('user', userSchema);

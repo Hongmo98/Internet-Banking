@@ -3,9 +3,7 @@ var createError = require('http-errors');
 const config = require('./../config/key');
 
 module.exports = function verify(roles) {
-    // if (typeof roles === 'string') {
-    //     roles = [roles];
-    // }
+ 
     return [
         (req, res, next) => {
             const token = req.headers['x-access-token'];

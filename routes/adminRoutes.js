@@ -8,6 +8,7 @@ router.get('/employee', verify('ADMIN'), controllerAdmin.getAllEmployee);
 router.get('/getEmployee', verify('ADMIN'), controllerAdmin.getEmployee);
 router.post('/updateEmployee', verify('ADMIN'), controllerAdmin.updateEmployee);
 router.post('/deleteEmployee', verify('ADMIN'), controllerAdmin.deleteEmployee);
+router.get('/showhistoryLinkBank',verify('ADMIN'),controllerAdmin.showhistoryLinkBank)
 
 
 

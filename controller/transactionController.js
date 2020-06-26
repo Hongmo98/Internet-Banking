@@ -13,6 +13,9 @@ var bcrypt = require("bcrypt");
 const config = require('./../config/key');
 const redis = require("redis");
 const moment = require('moment');
+// const { broadcastAll } = require('../utils/ws');
+
+let loop = 0;
 
 // const src = 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com:13088';
 const client = redis.createClient('13088', 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com', { no_ready_check: true });
@@ -34,7 +37,8 @@ const ObjectId = mongoose.Types.ObjectId;
 const mailer = require("../utils/Mailer");
 const otp = require("../utils/otp");
 const e = require("express");
-const { CLIENT_RENEG_LIMIT } = require("tls");
+
+
 
 module.exports = {
 
@@ -74,6 +78,7 @@ module.exports = {
         // try {
         let sender = await bankAccount.findOne({ userId });
         let email = sender.email;
+        console.log('dd', sender);
 
         if (sender == null) {
             next({ error: { message: "Invalid data", code: 422 } });
@@ -316,33 +321,42 @@ module.exports = {
         //     "idBank"  :"5ee353c900cceb8a5001c7cf",
         //     "nameRemind":"huong huong"
         // }
-        let { accountNumber, accountName, idBank, nameRemind } = req.body
+        let { accountNumber, idBank, nameRemind } = req.body
         console.log(req.body)
-        nameRemind = nameRemind || '';
-        let number = await receiverInfo.findOne({ accountNumber });
-        if (number) {
-            next({ error: { message: "account number exit ", code: 422 } });
+        let account = await bankAccount.findOne({ accountNumber: accountNumber });
+        if (!account) {
+            next({ error: { message: "acountNumber not found", code: 422 } });
+            return;
         }
-        let bank = await linkedBank.findById({ _id: idBank });
-        if (!bank) {
-            next({ error: { message: "account number exit ", code: 422 } });
-        }
-        // if (
-        //     typeof req.body.accountNumber === 'undefined' ||
-        //     typeof req.body.accountName === 'undefined'
 
-        // ) {
-        //     next({ error: { message: "In valid data", code: 422 } });
-        //     return;
-        // }
+
+        let number = await receiverInfo.findOne({ numberAccount: accountNumber });
+
+        if (number) {
+            next({ error: { message: "acountNumber exit", code: 422 } });
+            return;
+        }
+        let bank = await linkedBank.findById({ _id: ObjectId(idBank) });
+        console.log('2', bank)
+        if (!bank) {
+            next({ error: { message: "bank number exit ", code: 422 } });
+            return;
+        }
+        let name = " ";
+        if (nameRemind === '') {
+            name = account.accountName;
+
+        }
+        else {
+            name = nameRemind;
+        }
+
 
         let saveInfo = new receiverInfo({
             numberAccount: accountNumber,
-            nameAccount: accountName,
             userId: userId,
             idBank: idBank,
-            nameBank: bank.nameBank,
-            nameRemind: nameRemind
+            nameRemind: name
 
         })
         try {
@@ -358,7 +372,8 @@ module.exports = {
     receiverTransfer: async (req, res, next) => {
 
         let { userId } = req.tokePayload;
-        let { type, idBank } = req.query;
+        let { type, idBank, txtSearch } = req.query;
+        txtSearch = txtSearch || "";
         let conditionQuery = {
             $and: [{
                 userId: ObjectId(userId)
@@ -367,28 +382,40 @@ module.exports = {
 
             ]
         };
-        if (type === 'mpbank') {
+        if (type) {
 
-            let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false, idBank: ObjectId(idBank) });
-            res.status(200).json({ result: receiver });
+            conditionQuery.$and.push({ idBank: { $in: [ObjectId(idBank)] } })
+
+
         }
         else {
-            let conditionQuery = {
-                $and: [{
-                    userId: ObjectId(userId)
-                },
-                { isDelete: { $nin: [true] } },
-                { idBank: { $nin: [ObjectId(idBank)] } }
-                ]
-            };
+
+            conditionQuery.$and.push({ idBank: { $nin: [ObjectId(idBank)] } })
 
 
-            let e = await receiverInfo.aggregate([
-                { $match: conditionQuery },
 
-            ])
-            res.status(200).json({ result: e });
         }
+
+
+        let e = await receiverInfo.aggregate([
+            { $match: conditionQuery },
+            {
+                $lookup:
+                {
+                    from: "linkedbanks",
+                    localField: "idBank",
+                    foreignField: "_id",
+                    as: "linkedbank"
+                }
+            },
+            {
+                $unwind: "$linkedbank"
+            },
+
+
+        ])
+        res.status(200).json({ result: e });
+
 
 
         // else {
@@ -476,6 +503,8 @@ module.exports = {
         //      "content":"m con no tao nhe"
         // }  
         let { numberAccount, amountMoney, content } = req.body;
+
+
         try {
             let sender = await bankAccount.findOne({ userId });
 
@@ -490,11 +519,13 @@ module.exports = {
                 next({ error: { message: "Invalid  account", code: 422 } });
                 return;
             }
+            let ts = moment().unix();
             let deptUser = new deptReminder({
                 bankAccountSender: sender.accountNumber,
                 bankAccountReceiver: numberAccount,
                 amount: amountMoney,
                 contentNotification: content,
+                iat: ts
 
             })
 
@@ -502,9 +533,11 @@ module.exports = {
                 bankAccountSender: sender.accountNumber,
                 bankAccountReceiver: numberAccount,
                 amount: amountMoney,
-                content: content
-
+                content: content,
+                iat: ts,
             })
+            // const msg = JSON.stringify(deptUser);
+            // broadcastAll(msg);
             await deptUser.save();
             await deptInfo.save();
             let result = { mg: "create dept success", deptUser, deptInfo };
@@ -516,22 +549,34 @@ module.exports = {
     },
 
     getListNotification: async (req, res, next) => {
+
         let { userId, role } = req.tokePayload;
+        const ts = +req.query.ts || 0;
         try {
 
-            let sender = await bankAccount.findOne({ userId });
+            let sender = await bankAccount.findOne({ userId }).filter(c => c.iat > ts);
 
             if (sender == null) {
                 next({ error: { message: "Invalid data", code: 422 } });
                 return;
             }
-            console.log('2', sender.accountNumber);
+
             let notification = await deptReminder.find({ bankAccountReceiver: sender.accountNumber, isDelete: false });
 
-            console.log('1', notification);
-            res.status(200).json({ result: notification });
-
-
+            if (notification.size() > 0) {
+                res.status(200).json({
+                    return_ts, notification
+                });
+            }
+            else {
+                loop++;
+                console.log(`loop: ${loop}`);
+                if (loop < 4) {
+                    setTimeout(getListNotification, 2500);
+                } else {
+                    res.status(204).send('NO DATA.');
+                }
+            }
         } catch (err) {
             next(err);
 
@@ -556,7 +601,9 @@ module.exports = {
         }
     },
     showDeptRemindUnPay: async (req, res, next) => {
+
         let { userId, role } = req.tokePayload;
+        const ts = +req.query.ts || 0;
         try {
             let sender = await bankAccount.findOne({ userId });
 
@@ -564,12 +611,39 @@ module.exports = {
                 next({ error: { message: "Invalid data", code: 422 } });
                 return;
             }
-            let dept = await deptInformation.find({ bankAccountReceiver: sender.accountNumber, isDelete: false });
-            if (dept == null) {
-                next({ error: { message: "Invalid list dept", code: 422 } });
-                return;
+            let conditionQuery = {
+                $and: [{
+                    bankAccountReceiver: sender.accountNumber,
+                },
+                { isDelete: { $nin: [true] } },
+                { iat: { $gt: ts } }
+
+                ]
+            };
+            let dept = await deptInformation.aggregate([
+                { $match: conditionQuery },
+
+            ])
+            let timeStap = moment().unix();
+            // let dept = await deptInformation.find({ bankAccountReceiver: sender.accountNumber, isDelete: false }).filter(c => c.iat > ts);
+            console.log('1', dept)
+            console.log('12', dept.length)
+            if (dept.length > 0) {
+                console.log("222");
+                let result = { timeStap, dept }
+                res.status(200).json({
+                    result: result
+                });
             }
-            res.status(200).json({ result: dept });
+            else {
+                loop++;
+                console.log(`loop: ${loop}`);
+                if (loop < 4) {
+                    setTimeout(showDeptRemindUnPay, 2500);
+                } else {
+                    res.status(204).send('NO DATA.');
+                }
+            }
         } catch (err) {
             next(err);
         }

@@ -4,9 +4,9 @@ const verify = require('../middlewares/authMiddlewares');
 
 const transferController = require('../controller/transactionController');
 //transfer
-router.post('/transferInternal', verify, transferController.transferInternal);
-router.post('/requestReceiver', verify, transferController.requestReceiver);
-router.post('/verifyOTP', verify, transferController.verifyOTP);
+router.post('/transferInternal', verify('CUSTOMER'), transferController.transferInternal);
+router.post('/requestReceiver', verify('CUSTOMER'), transferController.requestReceiver);
+router.post('/verifyOTP', verify('CUSTOMER'), transferController.verifyOTP);
 
 // router.get('/requestAccountNumber', verify, transferController.requestAccountNumber);
 

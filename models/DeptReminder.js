@@ -10,7 +10,8 @@ const deptReminderSchema = new Schema({
     isRead: Boolean,
     isDelete: { type: Boolean, default: false },
     createAt: { type: Date, default: Date() },
-    updateAt: Date
+    iat: Number,
+    type: String
 })
 
 mongoose.model('deptReminder', deptReminderSchema);

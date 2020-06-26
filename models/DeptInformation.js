@@ -11,6 +11,7 @@ const deptInformationSchema = new Schema({
     // PAY , UNPAY
     status: { type: String, "index": "text", default: "PAY" },
     isDelete: { type: Boolean, default: false },
+    iat: Number,
 })
 
 mongoose.model('deptInformation', deptInformationSchema);

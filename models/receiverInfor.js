@@ -12,6 +12,7 @@ const receiverInfoSchema = new Schema({
 
 
 
+
 })
 
 module.exports = mongoose.model('receiverInfo', receiverInfoSchema);

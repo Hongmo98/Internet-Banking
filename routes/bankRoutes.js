@@ -16,11 +16,11 @@ router.post('/transferRsa', bankController.transferRsa);
 
 
 /// chuyen khoan 
-router.post('/linkBankAccount', verify, bankController.linkBankAccount);
-router.post('/transferBankAccount', verify, bankController.transferBankAccount);
-router.post('/verifyOTP', verify, bankController.verifyOTP);
+router.post('/linkBankAccount', verify('CUSTOMER'), bankController.linkBankAccount);
+router.post('/transferBankAccount', verify('CUSTOMER'), bankController.transferBankAccount);
+router.post('/verifyOTP', verify('CUSTOMER'), bankController.verifyOTP);
 router.post('/infomation', bankController.infomationU)
 
 
-router.get('/getNameBankLink', verify, bankController.getNameBankLink)
+router.get('/getNameBankLink', verify('CUSTOMER'), bankController.getNameBankLink)
 module.exports = router;
