@@ -14,7 +14,7 @@ const config = require('./../config/key');
 module.exports = {
 
     createEmployee: async (req, res, next) => {
-        let { userId } = req.tokePayload;
+        // let { userId } = req.tokePayload;
         let { fullName, email, role } = req.body;
         let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 

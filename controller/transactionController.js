@@ -218,7 +218,7 @@ module.exports = {
             return;
         }
 
-        let { code, receiver, amountMoney, content, typeSend, typeTransaction, idRemind } = req.body;
+        let { code, receiver, amountMoney, content, typeSend, typeTransaction, idRemind, idBank } = req.body;
 
 
         let userSender = await bankAccount.findOne({ userId });
@@ -275,6 +275,7 @@ module.exports = {
                                 typeTransaction: typeTransaction,
                                 fee: 2200,
                                 status: "SUCCESS",
+                                idBank: idBank
                             })
                             if (typeTransaction === 'INDEPT') {
                                 let deptTra = await deptInformation.findById({ _id: ObjectId(idRemind) })
@@ -551,38 +552,49 @@ module.exports = {
     getListNotification: async (req, res, next) => {
 
         let { userId, role } = req.tokePayload;
-        const ts = +req.query.ts || 0;
+        let { pageNumber, numberRecord } = req.query;
+        let idUser = req.user;
+        pageNumber = +pageNumber || 1;
+        numberRecord = +numberRecord || 10;
+        let sender = await bankAccount.findOne({ userId });
+
+        let condition = { bankAccountReceiver: sender.accountNumber, isDelete: { $eq: false } };
+
         try {
-
-            let sender = await bankAccount.findOne({ userId }).filter(c => c.iat > ts);
-
-            if (sender == null) {
-                next({ error: { message: "Invalid data", code: 422 } });
-                return;
-            }
-
-            let notification = await deptReminder.find({ bankAccountReceiver: sender.accountNumber, isDelete: false });
-
-            if (notification.size() > 0) {
-                res.status(200).json({
-                    return_ts, notification
-                });
-            }
-            else {
-                loop++;
-                console.log(`loop: ${loop}`);
-                if (loop < 4) {
-                    setTimeout(getListNotification, 2500);
-                } else {
-                    res.status(204).send('NO DATA.');
-                }
-            }
+            let notifications = await deptReminder.aggregate([
+                { $match: condition },
+                {
+                    $lookup:
+                    {
+                        from: "bankaccounts",
+                        localField: "bankAccountReceiver",
+                        foreignField: "accountNumber",
+                        as: "users_receiver"
+                    }
+                },
+                {
+                    $unwind: "$users_receiver"
+                },
+                {
+                    $lookup:
+                    {
+                        from: "bankaccounts",
+                        localField: "bankAccountSender",
+                        foreignField: "accountNumber",
+                        as: "users_sender"
+                    }
+                },
+                {
+                    $unwind: "$users_sender"
+                },
+                { $sort: { createdAt: -1 } },
+                { $skip: +numberRecord * (+pageNumber - 1) },
+                { $limit: numberRecord }
+            ]);
+            res.status(200).json({ result: notifications });
         } catch (err) {
-            next(err);
-
+            next({ error: { message: 'Lỗi không lấy được dữ liệu', code: 500 } });
         }
-
-
 
     },
     getBadgeNumber: async (req, res, next) => {
@@ -603,7 +615,7 @@ module.exports = {
     showDeptRemindUnPay: async (req, res, next) => {
 
         let { userId, role } = req.tokePayload;
-        const ts = +req.query.ts || 0;
+        // const ts = +req.query.ts || 0;
         try {
             let sender = await bankAccount.findOne({ userId });
 
@@ -616,7 +628,7 @@ module.exports = {
                     bankAccountReceiver: sender.accountNumber,
                 },
                 { isDelete: { $nin: [true] } },
-                { iat: { $gt: ts } }
+                    // { iat: { $gt: ts } }
 
                 ]
             };
@@ -624,26 +636,27 @@ module.exports = {
                 { $match: conditionQuery },
 
             ])
-            let timeStap = moment().unix();
-            // let dept = await deptInformation.find({ bankAccountReceiver: sender.accountNumber, isDelete: false }).filter(c => c.iat > ts);
-            console.log('1', dept)
-            console.log('12', dept.length)
-            if (dept.length > 0) {
-                console.log("222");
-                let result = { timeStap, dept }
-                res.status(200).json({
-                    result: result
-                });
-            }
-            else {
-                loop++;
-                console.log(`loop: ${loop}`);
-                if (loop < 4) {
-                    setTimeout(showDeptRemindUnPay, 2500);
-                } else {
-                    res.status(204).send('NO DATA.');
-                }
-            }
+            res.status(200).json({ result: dept })
+            // let timeStap = moment().unix();
+            // // let dept = await deptInformation.find({ bankAccountReceiver: sender.accountNumber, isDelete: false }).filter(c => c.iat > ts);
+            // console.log('1', dept)
+            // console.log('12', dept.length)
+            // if (dept.length > 0) {
+            //     console.log("222");
+            //     let result = { timeStap, dept }
+            //     res.status(200).json({
+            //         result: result
+            //     });
+            // }
+            // else {
+            //     loop++;
+            //     console.log(`loop: ${loop}`);
+            //     if (loop < 4) {
+            //         setTimeout(showDeptRemindUnPay, 2500);
+            //     } else {
+            //         res.status(204).send('NO DATA.');
+            //     }
+            // }
         } catch (err) {
             next(err);
         }

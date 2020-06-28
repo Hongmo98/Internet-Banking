@@ -47,20 +47,20 @@ module.exports = {
                     conditionQuery.$and.push({ 'bankAccountSender': userSender.accountNumber })
                 }
             }
-            if (startDate !== "") {
+            // if (startDate && endDate) {
+            //     //     conditionQuery.createAt = { $gte: new Date(startDate), $lt: new Date(endDate) }
+
+            // }
+            if (startDate && endDate) {
                 conditionQuery.$and.push({
                     'createAt': {
-                        $gt: new Date(startDate)
+                        $gte: new Date(startDate),
+                        $lt: new Date(endDate),
                     }
                 })
-                if (endDate) {
-                    conditionQuery.$and.push({
-                        'createAt': {
-                            $lte: new Date(endDate),
-                        }
-                    })
-                }
+
             }
+
             let e = await transaction.aggregate([
                 { $match: conditionQuery },
                 { $skip: +numberRecord * (+pageNumber - 1) },

@@ -17,7 +17,7 @@ router.post('/transferRsa', bankController.transferRsa);
 
 /// chuyen khoan 
 router.post('/linkBankAccount', verify('CUSTOMER'), bankController.linkBankAccount);
-router.post('/transferBankAccount', verify('CUSTOMER'), bankController.transferBankAccount);
+
 router.post('/verifyOTP', verify('CUSTOMER'), bankController.verifyOTP);
 router.post('/infomation', bankController.infomationU)
 

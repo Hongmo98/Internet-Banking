@@ -433,24 +433,24 @@ module.exports = {
 
         let token = otp.generateOTP();
         console.log('token', token);
-        // let info = null;
+
         const partner_code = "MtcwLbASeIXVnKurQCHrDCmsTEsBD7rQ44wHsEWjWtl8k";
         let { nameBank, content, amountMoney, receiver, typeSend } = req.body;
         if (content === ' ') {
             content = `${sender.accountName} transfer`;
         }
         console.log(req.body)
-        // res.status(200).json({ result: true });
+
 
         if (nameBank === "NKLBank") {
-            let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
+
             const timestamp = moment().toString();
             let transaction_type = '?';
-            let source_account = '3234';
+            let source_account = numberSender;
             let target_account = receiver;
             const data = { transaction_type, source_account, target_account };
 
-            const secret_key = config.SECRET_KEY;
+            const secret_key = config.SECRET;
             console.log(data);
             const hash = CryptoJS.AES.encrypt(
                 JSON.stringify({ data, timestamp, secret_key }),
@@ -475,7 +475,7 @@ module.exports = {
                         )
                         .then(async function (response) {
                             let info = response.data;
-                            let fullName = inf.fullName;
+                            let fullName = info.fullname;
 
                             client.setex(userId, 100, token, function (err) {
 
@@ -484,25 +484,17 @@ module.exports = {
                             mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
                                 .then(async (json) => {
                                     let dataReceiver = { content, amountMoney, typeSend, nameBank }
-                                    let data = { sender, fullName, dataReceiver, message: "send otp email " }
+                                    let data = { sender, info, fullName, dataReceiver, message: "send otp email " }
 
                                     console.log(json);
                                     res.status(200).json({ result: data });
 
-
-
                                 })
-
-                            // let data = { sender, info }
-                            // console.log(data);
-
-                            // res.status(200).json({ result: info })
-
-
                         })
                         .catch(function (error) {
                             // next(error.response.data);
-                            console.log(error.response.data.msg);
+                            console.log('1', error);
+                            console.log('2', error.response.data.msg);
                             next({ error: { message: error.response.data.msg, code: 422 } });
                             return;
 
@@ -516,12 +508,9 @@ module.exports = {
             catch (err) {
                 next(err);
             }
-            // let account_number = receiver;
-            // let a = await getInfoPGP(account_number);
-            // res.status(200).json({ result: a });
         }
-        else {
-            console.log('s0');
+        if (nameBank === "S2QBank") {
+
             let account_number = receiver;
             let info = await getInfo(account_number);
 
@@ -530,7 +519,7 @@ module.exports = {
                 return;
             }
             let fullName = info.full_name;
-            console.log('2', info)
+            console.log('hdhdhdh', info)
             client.setex(userId, 300, token, function (err) {
 
                 console.error(err);
@@ -545,70 +534,12 @@ module.exports = {
 
                     res.status(200).json({ result: data });
                 })
-
         }
+
+
 
     },
-    transferBankAccount: async (req, res, next) => {
-        let { userId } = req.tokePayload;
-        let userSender = await bankAccount.findOne({ userId: ObjectId(userId) })
-        if (userSender === null) {
-            next({ error: { message: "Not found account number", code: 422 } });
-        }
-        let sender = userSender.bankAccountSender;
-        let email = userSender.email;
-        console.log(userSender);
 
-
-        if (
-            typeof req.body.idTransaction === "undefined"
-
-        ) {
-            next({ error: { message: "Invalid data", code: 422 } });
-            return;
-        }
-        //  {"idTransaction":""}
-        let { idTransaction } = req.body;
-
-        console.log(req.body);
-        let userReceiver = await transaction.findById({
-            _id: idTransaction
-        });
-
-        if (userReceiver === null) {
-            next({ error: { message: "Not found account number", code: 422 } });
-            return;
-        }
-        console.log(userReceiver);
-
-        let token = otp.generateOTP();
-        console.log(token);
-
-        let time = Date.now();
-        console.log(time);
-
-        mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
-            .then(async (json) => {
-                userReceiver.CodeOTP = token;
-                userReceiver.timeOTP = time;
-                console.log(json);
-                try {
-                    await userReceiver.save();
-                    console.log(userReceiver)
-                } catch (err) {
-                    next(err);
-                    return;
-                }
-
-                res.status(200).json({ message: "send otp email " });
-            })
-            .catch((err) => {
-                next(err);
-                return;
-            });
-
-    },
-    // {"code ":"79944"}
     verifyOTP: async (req, res, next) => {
 
         let { userId } = req.tokePayload;
@@ -623,9 +554,6 @@ module.exports = {
         let { nameBank, content, amountMoney, receiver, typeSend, code } = req.body;
         console.log(req.body);
         try {
-
-
-
             let userSender = await bankAccount.findOne({ userId });
             console.log(userSender);
             if (userSender == null) {
@@ -650,7 +578,7 @@ module.exports = {
                         let target_account = receiver;
                         let amount_money = amountMoney;
                         const data = { transaction_type, source_account, target_account, amount_money };
-                        const secret_key = config.SECRET_KEY;
+                        const secret_key = config.SECRET;
                         // console.log(data);
                         const hash = CryptoJS.AES.encrypt(
                             JSON.stringify({ data, timestamp, secret_key }),
@@ -691,6 +619,11 @@ module.exports = {
                                         )
                                         .then(async function (response) {
                                             let transfer = await getSenderMoney(response.data, amountMoney, typeSend, userSender);
+                                            if (transfer = "error") {
+                                                next({ error: { message: "current balance not enough to transfer", code: 422 } });
+                                                return;
+                                            }
+
                                             let link = new saveSign({
                                                 respone: response.data,
                                                 sign: response.data.sign,
@@ -710,7 +643,12 @@ module.exports = {
                                             })
                                             await newTransaction.save();
                                             await link.save();
-                                            let data = { newTransaction, link, partner: response.data, transfer, msg: 'transfer success' }
+                                            let re = await receiverInfo.findOne({ numberAccount: receiver });
+                                            let type = false;
+                                            if (re === null) {
+                                                type = true;
+                                            }
+                                            let data = { newTransaction, link, partner: response.data, transfer, msg: 'transfer success', type }
                                             res.status(200).json({ result: data });
 
                                         })
@@ -735,6 +673,10 @@ module.exports = {
                         const transfer = await sendMoney(content, amountMoney, receiver, typeSend, userSender);
                         console.log("hhe", transfer);
                         let moneyUser = await getSenderMoney(transfer, amountMoney, typeSend, userSender);
+                        if (moneyUser = "error") {
+                            next({ error: { message: "current balance not enough to transfer", code: 422 } });
+                            return;
+                        }
                         console.log(moneyUser);
                         let link = new saveSign({
                             respone: transfer,
@@ -755,7 +697,12 @@ module.exports = {
                         })
                         await newTransaction.save();
                         await link.save();
-                        res.status(200).json({ result: moneyUser, newTransaction, msg: 'transfer success', link });
+                        let re = await receiverInfo.findOne({ numberAccount: receiver });
+                        let type = false;
+                        if (re === null) {
+                            type = true;
+                        }
+                        res.status(200).json({ result: moneyUser, newTransaction, msg: 'transfer success', link, type });
                         // res.status(200).json({ transfer });
 
 
@@ -786,11 +733,21 @@ module.exports = {
     },
     getNameBankLink: async (req, res, next) => {
 
-        const { role, userId } = req.tokePayload;
-        let bank = await linkedBank.find({ isDelete: false });
-        console.log(bank);
-        res.status(200).json({ result: bank });
+        // const { role, userId } = req.tokePayload;
+        // let bank = await linkedBank.find({});
+        // console.log(bank);
+        // res.status(200).json({ result: bank });
+        let conditionQuery = {
+            $and: [
+                { isDelete: { $nin: ["true"] } },
 
+            ]
+        };
+        let e = await linkedBank.aggregate([
+            { $match: conditionQuery },
+        ])
+
+        res.status(200).json({ result: e });
     }
 }
 getSenderMoney = async (data, amountMoney, typeSend, sender) => {
@@ -798,20 +755,26 @@ getSenderMoney = async (data, amountMoney, typeSend, sender) => {
     let money = +amountMoney;
     let fee = 3300;
     let total = senderMoney - money
-    if (typeSend === true) {
+    let check = money + 50000 + fee;
+    if (sender.currentBalance > check) {
+        if (typeSend === true) {
 
-        sender.currentBalance = total - fee;
+            sender.currentBalance = total - fee;
 
+        } else {
+            sender.currentBalance = total;
+
+        }
+        await sender.save();
+
+
+        let transfer = { data, sender };
+        // console.log(transfer)
+        return transfer;
     } else {
-        sender.currentBalance = total;
-
+        let msg = "error"
+        return msg
     }
-    await sender.save();
-
-
-    let transfer = { data, sender };
-    // console.log(transfer)
-    return transfer;
 
 };
 
@@ -861,7 +824,7 @@ const sendMoney = async (content, amountMoney, receiver, typeSend, userSender) =
 };
 const getInfo = async (account_number) => {
     let timestamp = moment().unix();
-    let security_key = config.SECRET_KEY;
+    let security_key = config.SECRET;
     let _data = JSON.stringify(account_number);
     try {
         let response = await axios({
@@ -878,7 +841,6 @@ const getInfo = async (account_number) => {
         return response.data;
     } catch (error) {
         console.log("err", error);
-
         return error.name;
     }
 }
