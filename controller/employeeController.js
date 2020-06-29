@@ -92,67 +92,72 @@ module.exports = {
     },
     ApplyMoney: async (req, res, next) => {
         let { userId, role } = req.tokePayload;
-        if (role === 'EMPLOYEE') {
-            let { accountNumber, amountMoney } = req.body;
-            if (typeof accountNumber === undefined ||
-                typeof amountMoney === undefined || typeof phone === undefined) {
 
-                throw createError(602, 'Invalid value');
-            }
-            let applyUser = null;
-            try {
-                applyUser = await bankAccount.findOne({ accountNumber: accountNumber });
-                if (applyUser === null) {
-                    throw createError(602, 'not found account');
-                }
-                applyUser.currentBalance = +applyUser.currentBalance + amountMoney;
+        let { accountNumber, amountMoney, userName } = req.body;
+        if (
+            typeof amountMoney === undefined) {
 
-                await applyUser.save();
-
-                res.status(200).json({ result: true, applyUser });
-
-            }
-            catch (err) {
-                next(err);
-            }
+            throw createError(602, 'Invalid value');
         }
-        else {
-            throw createError(602, 'you cannot except query ');
+        let applyUser = null;
+        try {
+            let account = null;
+            if (userName) {
+
+                let userAccount = await user.findOne({ username: userName });
+                account = userAccount.accountNumber;
+
+            }
+            else {
+                account = accountNumber;
+            }
+
+
+            applyUser = await bankAccount.findOne({ accountNumber: accountNumber });
+            if (applyUser === null) {
+                throw createError(602, 'not found account');
+            }
+
+
+            applyUser.currentBalance = +applyUser.currentBalance + amountMoney;
+
+            await applyUser.save();
+
+            res.status(200).json({ result: true, applyUser });
 
         }
-
+        catch (err) {
+            next(err);
+        }
 
     },
     getCustomer: async (req, res, next) => {
 
-        let { role, userId } = req.tokePayload;
+
 
         let { username, accountNumber } = req.query;
-        if (role === 'EMPLOYEE') {
 
-            let conditionQuery = null;
-            try {
-                if (username) {
+        let conditionQuery = null;
+        try {
+            if (username) {
 
-                    conditionQuery = await bankAccount.findOne({ username: username });
+                conditionQuery = await bankAccount.findOne({ username: username });
 
-                }
-                else {
-
-                    conditionQuery = await bankAccount.findOne({ accountNumber: accountNumber });
-
-                }
-                if (!conditionQuery) {
-                    throw createError(602, 'Invalid value');
-                }
-                res.status(200).json({ result: conditionQuery })
             }
-            catch (err) {
-                nex(err);
+            else {
+
+                conditionQuery = await bankAccount.findOne({ accountNumber: accountNumber });
+
             }
-        } else {
-            throw createError(602, 'you cannot accept ');
+            if (!conditionQuery) {
+                throw createError(602, 'Invalid value');
+            }
+            res.status(200).json({ result: conditionQuery })
         }
+        catch (err) {
+            nex(err);
+        }
+
 
     },
     historyTransactionSender: async (req, res, next) => {
@@ -161,15 +166,23 @@ module.exports = {
             endDate,
             pageNumber,
             numberRecord,
+            userId,
         } = req.query;
         startDate = startDate || "";
         pageNumber = +pageNumber || 1;
         numberRecord = +numberRecord || 10;
         try {
+            if (
+                typeof userId === undefined) {
+
+                throw createError(602, 'Invalid value');
+            }
+
             let userSender = await bankAccount.findOne({ userId });
             if (userSender === null) {
                 next({ error: { message: "Not found account", code: 422 } });
             }
+
             let conditionQuery = {
                 $and: [{
 

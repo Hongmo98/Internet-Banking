@@ -11,6 +11,7 @@ const transaction = mongoose.model("transaction");
 const linkedBank = mongoose.model("linkedBank");
 const saveSign = mongoose.model("saveSign");
 const information = mongoose.model("information");
+const receiverInfo = mongoose.model("receiverInfo");
 const config = require('./../config/key');
 const ObjectId = mongoose.Types.ObjectId;
 const mailer = require("../utils/Mailer");
@@ -619,7 +620,8 @@ module.exports = {
                                         )
                                         .then(async function (response) {
                                             let transfer = await getSenderMoney(response.data, amountMoney, typeSend, userSender);
-                                            if (transfer = "error") {
+                                            console.log("transfer", transfer);
+                                            if (transfer === "error") {
                                                 next({ error: { message: "current balance not enough to transfer", code: 422 } });
                                                 return;
                                             }
@@ -673,7 +675,8 @@ module.exports = {
                         const transfer = await sendMoney(content, amountMoney, receiver, typeSend, userSender);
                         console.log("hhe", transfer);
                         let moneyUser = await getSenderMoney(transfer, amountMoney, typeSend, userSender);
-                        if (moneyUser = "error") {
+                        console.log("moneyUser", moneyUser);
+                        if (moneyUser === "error") {
                             next({ error: { message: "current balance not enough to transfer", code: 422 } });
                             return;
                         }
@@ -732,6 +735,7 @@ module.exports = {
 
     },
     getNameBankLink: async (req, res, next) => {
+        let { type } = req.query
 
         // const { role, userId } = req.tokePayload;
         // let bank = await linkedBank.find({});
@@ -755,8 +759,10 @@ getSenderMoney = async (data, amountMoney, typeSend, sender) => {
     let money = +amountMoney;
     let fee = 3300;
     let total = senderMoney - money
-    let check = money + 50000 + fee;
-    if (sender.currentBalance > check) {
+    let check = money + fee;
+    console.log("check", check);
+    console.log("sender.currentBalance", sender.currentBalance)
+    if (sender.currentBalance > +check) {
         if (typeSend === true) {
 
             sender.currentBalance = total - fee;
@@ -766,7 +772,6 @@ getSenderMoney = async (data, amountMoney, typeSend, sender) => {
 
         }
         await sender.save();
-
 
         let transfer = { data, sender };
         // console.log(transfer)

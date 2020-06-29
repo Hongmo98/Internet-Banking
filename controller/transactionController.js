@@ -324,19 +324,21 @@ module.exports = {
         // }
         let { accountNumber, idBank, nameRemind } = req.body
         console.log(req.body)
-        let account = await bankAccount.findOne({ accountNumber: accountNumber });
-        if (!account) {
-            next({ error: { message: "acountNumber not found", code: 422 } });
-            return;
+        if (idBank === "5ee353c900cceb8a5001c7cf") {
+            let account = await bankAccount.findOne({ accountNumber: accountNumber });
+            if (!account) {
+                next({ error: { message: "acountNumber not found", code: 422 } });
+                return;
+            }
         }
 
-
-        let number = await receiverInfo.findOne({ numberAccount: accountNumber });
+        let number = await receiverInfo.findOne({ numberAccount: accountNumber, isDelete: false });
 
         if (number) {
             next({ error: { message: "acountNumber exit", code: 422 } });
             return;
         }
+
         let bank = await linkedBank.findById({ _id: ObjectId(idBank) });
         console.log('2', bank)
         if (!bank) {
@@ -446,8 +448,9 @@ module.exports = {
         let { userId } = req.tokePayload;
 
         try {
-            let receiver = await receiverInfo.findById({ id: receiverId });
-            receiverInfo.isDelete = true;
+            let receiver = await receiverInfo.findById({ _id: receiverId });
+            receiver.isDelete = true;
+            console.log("isDelete", receiver);
 
             await receiver.save();
             return res.status(200).json({ result: true });

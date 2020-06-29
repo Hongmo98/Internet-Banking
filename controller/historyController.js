@@ -47,10 +47,7 @@ module.exports = {
                     conditionQuery.$and.push({ 'bankAccountSender': userSender.accountNumber })
                 }
             }
-            // if (startDate && endDate) {
-            //     //     conditionQuery.createAt = { $gte: new Date(startDate), $lt: new Date(endDate) }
 
-            // }
             if (startDate && endDate) {
                 conditionQuery.$and.push({
                     'createAt': {
