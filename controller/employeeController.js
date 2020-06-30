@@ -26,7 +26,7 @@ module.exports = {
         //                 "phone": "0352349848",}
 
         let { fullName, email, phone } = req.body;
-        let { role, userId } = req.tokePayload;
+
         let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 
         if (!regex.test(email)) {
@@ -40,91 +40,96 @@ module.exports = {
 
             throw createError(602, 'Invalid value');
         }
-        if (role === 'EMPLOYEE') {
-            let userFind = null;
-            let accountNumber = generateAccountNumber();
-            console.log(accountNumber);
 
-            let userName = generateUserName();
-            console.log(userName);
-            let password = generatePassword();
+        let userFind = null;
+        let accountNumber = generateAccountNumber();
+        console.log(accountNumber);
 
-            let hashPass = bcrypt.hashSync(password, 10);
+        let name = generateUserName();
+        let userName = "CUS" + name;
 
+        let password = generatePassword();
 
-            userFind = await bankAccount.findOne({ email: email });
-
-            console.log(userFind);
-            if (userFind) {
-                throw createError(409, 'Email already exist');
-            }
-            let saveLoginUser = new user({
-                email: email,
-                username: userName,
-                hashPassword: hashPass,
-                fullName: fullName
+        let hashPass = bcrypt.hashSync(password, 10);
 
 
-            })
-            await saveLoginUser.save();
-            console.log(saveLoginUser);
+        userFind = await bankAccount.findOne({ email: email });
 
-            let newUser = new bankAccount({
-                userId: saveLoginUser.id,
-                accountName: fullName,
-                phone: phone,
-                accountNumber: accountNumber,
-                email: email,
-                hashPassword: password,
-                currentBalance: 0,
-
-            });
-
-
-            await newUser.save();
-
-            let objUser = { newUser, saveLoginUser }
-
-            return res.status(200).json({ result: objUser });
-        } else {
-            throw createError(602, 'not authorization');
+        console.log(userFind);
+        if (userFind) {
+            throw createError(409, 'Email already exist');
         }
+        let saveLoginUser = new user({
+            email: email,
+            username: userName,
+            hashPassword: hashPass,
+            fullName: fullName
+
+
+        })
+        await saveLoginUser.save();
+        console.log(saveLoginUser);
+
+        let newUser = new bankAccount({
+            userId: saveLoginUser.id,
+            accountName: fullName,
+            phone: phone,
+            accountNumber: accountNumber,
+            email: email,
+            hashPassword: password,
+            currentBalance: 0,
+
+        });
+
+
+        await newUser.save();
+
+        let objUser = { newUser, saveLoginUser }
+
+        return res.status(200).json({ result: objUser });
+
     },
     ApplyMoney: async (req, res, next) => {
-        let { userId, role } = req.tokePayload;
 
-        let { accountNumber, amountMoney, userName } = req.body;
+        let { accountNumber, amountMoney } = req.body;
         if (
-            typeof amountMoney === undefined) {
+            typeof amountMoney === undefined ||
+            accountNumber === undefined
+        ) {
 
             throw createError(602, 'Invalid value');
         }
-        let applyUser = null;
+
         try {
-            let account = null;
-            if (userName) {
 
-                let userAccount = await user.findOne({ username: userName });
-                account = userAccount.accountNumber;
 
+
+            let userAccount = await user.findOne({ username: accountNumber });
+
+            if (userAccount) {
+                let applyUser = await bankAccount.findOne({ userId: userAccount._id });
+                if (applyUser === null) {
+                    throw createError(602, 'username  not exit');
+                }
+                applyUser.currentBalance = +applyUser.currentBalance + amountMoney;
+
+                await applyUser.save();
+
+                res.status(200).json({ result: applyUser });
             }
             else {
-                account = accountNumber;
+                let applyUser = await bankAccount.findOne({ accountNumber: accountNumber });
+
+                if (applyUser === null) {
+                    throw createError(602, ' account number not exit');
+                }
+                applyUser.currentBalance = +applyUser.currentBalance + amountMoney;
+
+                await applyUser.save();
+
+                res.status(200).json({ result: applyUser });
+
             }
-
-
-            applyUser = await bankAccount.findOne({ accountNumber: accountNumber });
-            if (applyUser === null) {
-                throw createError(602, 'not found account');
-            }
-
-
-            applyUser.currentBalance = +applyUser.currentBalance + amountMoney;
-
-            await applyUser.save();
-
-            res.status(200).json({ result: true, applyUser });
-
         }
         catch (err) {
             next(err);

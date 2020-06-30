@@ -326,13 +326,13 @@ module.exports = {
         console.log(req.body)
         if (idBank === "5ee353c900cceb8a5001c7cf") {
             let account = await bankAccount.findOne({ accountNumber: accountNumber });
-            if (!account) {
+            if (account === null) {
                 next({ error: { message: "acountNumber not found", code: 422 } });
                 return;
             }
         }
 
-        let number = await receiverInfo.findOne({ numberAccount: accountNumber, isDelete: false });
+        let number = await receiverInfo.find({ numberAccount: accountNumber, isDelete: false });
 
         if (number) {
             next({ error: { message: "acountNumber exit", code: 422 } });
@@ -360,7 +360,6 @@ module.exports = {
             userId: userId,
             idBank: idBank,
             nameRemind: name
-
         })
         try {
 
@@ -418,25 +417,6 @@ module.exports = {
 
         ])
         res.status(200).json({ result: e });
-
-
-
-        // else {
-        //     let receiver = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false });
-        //     let receiver1 = await receiverInfo.find({ userId: ObjectId(userId), isDelete: false, idBank: ObjectId(idBank) });
-
-        //     const result = receiver.filter(item => receiver1.indexOf(ele => ele._id === item.id) === -1)
-        //     // let a = receiver.filter((e) => e.idBank === idBank)
-        //     // console.log(a);
-        //     console.log(result)
-
-
-        // res.status(200).json({ result: result });
-
-
-
-
-
     },
     deleteReceiver: async (req, res, next) => {
         if (typeof req.body.receiverId === 'undefined') {
