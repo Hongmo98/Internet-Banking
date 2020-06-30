@@ -102,8 +102,6 @@ module.exports = {
 
         try {
 
-
-
             let userAccount = await user.findOne({ username: accountNumber });
 
             if (userAccount) {
@@ -121,7 +119,7 @@ module.exports = {
                 let applyUser = await bankAccount.findOne({ accountNumber: accountNumber });
 
                 if (applyUser === null) {
-                    throw createError(602, ' account number not exit');
+                    throw createError(602, ' account number or username not exit');
                 }
                 applyUser.currentBalance = +applyUser.currentBalance + amountMoney;
 
