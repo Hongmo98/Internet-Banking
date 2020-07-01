@@ -30,6 +30,8 @@ module.exports = {
             }
             let conditionQuery = {
                 $and: [{
+                    $or: [{ bankAccountSender: userSender.accountNumber },
+                    { bankAccountReceiver: userSender.accountNumber }]
 
                 },
                 ]
@@ -37,14 +39,14 @@ module.exports = {
             if (typeTransaction) {
                 if (typeTransaction === "GETMONEY") {
                     conditionQuery.$and.push({ typeTransaction });
-                    conditionQuery.$and.push({ 'bankAccountReceiver': userSender.accountNumber })
+
                 }
                 else if (typeTransaction === "TRANSFER") {
                     conditionQuery.$and.push({ typeTransaction });
-                    conditionQuery.$and.push({ 'bankAccountSender': userSender.accountNumber })
+
                 } else {
                     conditionQuery.$and.push({ typeTransaction });
-                    conditionQuery.$and.push({ 'bankAccountSender': userSender.accountNumber })
+
                 }
             }
 

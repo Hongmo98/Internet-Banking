@@ -55,7 +55,7 @@ module.exports = {
 
     getAllEmployee: async (req, res, next) => {
         try {
-            let employees = await user.find({ isDelete: false })
+            let employees = await user.find({ isDelete: false, role: "EMPLOYEE" })
             res.status(200).json({ result: employees });
         } catch (err) {
             next(err);
@@ -65,7 +65,7 @@ module.exports = {
     getEmployee: async (req, res, next) => {
         let { id } = req.query;
         try {
-            let employees = await user.findBy({ _id: ObjectId(id), isDelete: false })
+            let employees = await user.findBy({ _id: ObjectId(id), isDelete: false, role: "EMPLOYEE" })
             res.status(200).json({ result: employees });
         } catch (err) {
             next(err);
@@ -108,42 +108,98 @@ module.exports = {
             next(err);
         }
     },
+    getAllCustomer: async (req, res, next) => {
+        try {
+            let employees = await user.find({ isDelete: false, role: "CUSTOMER" })
+            res.status(200).json({ result: employees });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    getCustomer: async (req, res, next) => {
+        let { id } = req.query;
+        try {
+            let employees = await user.findBy({ _id: ObjectId(id), isDelete: false, role: "CUSTOMER" })
+            res.status(200).json({ result: employees });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    updateCustomer: async (req, res, next) => {
+        let { userId } = req.tokePayload;
+        let objectUpdate = { ...req.body };
+        let id = req.body.id;
+        delete objectUpdate["id"];
+        try {
+            let receiver = await user.findOneAndUpdate({ _id: ObjectId(id), objectUpdate, new: true });
+
+            if (!e) {
+                return next({ error: { message: 'receiver not exists!' } });
+            }
+            res.status(200).json({ result: receiver });
+        } catch (error) {
+            next({ error: { message: 'Err', code: 601 } });
+        }
+
+    },
+    deleteCustomer: async (req, res, next) => {
+        if (typeof req.body.employeeId === 'undefined') {
+            next({ error: { message: "Invalid data", code: 402 } });
+            return;
+        }
+
+        let { employeeId } = req.body;
+        let { userId } = req.tokePayload;
+
+        try {
+            let receiver = await user.findById({ id: employeeId });
+            receiver.isDelete = true;
+
+            await receiver.save();
+            return res.status(200).json({ result: true });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+
+
+
+
     showhistoryLinkBank: async (req, res, next) => {
         let { startDate,
             endDate,
-            idBank,
+            nameBank,
             pageNumber,
             numberRecord,
         } = req.query;
+        console.log(req.query)
         try {
             let conditionQuery = {
                 $and: [{
-
                 },
                 ]
             };
-            if (startDate !== "") {
+            if (startDate && endDate) {
                 conditionQuery.$and.push({
                     'createAt': {
-                        $gt: new Date(startDate)
+                        $gte: new Date(startDate),
+                        $lt: new Date(endDate),
                     }
                 })
-                if (endDate) {
-                    conditionQuery.$and.push({
-                        'createAt': {
-                            $lte: new Date(endDate),
-                        }
-                    })
-                }
+
             }
-            if (idBank[0]) {
+            if (nameBank[0]) {
                 let bank = { $or: [] };
-                idBank.forEach(e => {
-                    bank.$or.push({ $eq: ["$bank", ObjectId(e)] });
+                nameBank.forEach(e => {
+                    bank.$or.push({ "bank": e });
                 });
-                //conditionQuery["$expr"]["$and"].push({ $eq: ["$category", categoryEventId] });
-                conditionQuery["$expr"]["$and"].push(bank);
+
+                conditionQuery["$and"].push(bank);
             }
+            console.log(conditionQuery);
             let e = await transaction.aggregate([
                 { $match: conditionQuery },
                 {
@@ -151,7 +207,7 @@ module.exports = {
                     {
                         from: "linkBanks",
                         localField: "bank",
-                        foreignField: "_id",
+                        foreignField: "nameBank",
                         as: "linkBank"
                     }
                 },
@@ -167,7 +223,8 @@ module.exports = {
             next(err);
         }
 
-    }
+    },
+
 
 
 };

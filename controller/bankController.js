@@ -705,7 +705,8 @@ module.exports = {
                         if (re === null) {
                             type = true;
                         }
-                        res.status(200).json({ result: moneyUser, newTransaction, msg: 'transfer success', link, type });
+                        let data = { newTransaction, link, transfer, msg: 'transfer success', type }
+                        res.status(200).json({ result: data });
                         // res.status(200).json({ transfer });
 
 
@@ -735,23 +736,15 @@ module.exports = {
 
     },
     getNameBankLink: async (req, res, next) => {
-        let { type } = req.query
 
-        // const { role, userId } = req.tokePayload;
-        // let bank = await linkedBank.find({});
-        // console.log(bank);
-        // res.status(200).json({ result: bank });
-        let conditionQuery = {
-            $and: [
-                { isDelete: { $nin: ["true"] } },
+        try {
+            let e = await linkedBank.find();
 
-            ]
-        };
-        let e = await linkedBank.aggregate([
-            { $match: conditionQuery },
-        ])
-
-        res.status(200).json({ result: e });
+            res.status(200).json({ result: e });
+        }
+        catch (err) {
+            next(err);
+        }
     }
 }
 getSenderMoney = async (data, amountMoney, typeSend, sender) => {

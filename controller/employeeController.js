@@ -109,7 +109,7 @@ module.exports = {
                 if (applyUser === null) {
                     throw createError(602, 'username  not exit');
                 }
-                applyUser.currentBalance = +applyUser.currentBalance + amountMoney;
+                applyUser.currentBalance = +applyUser.currentBalance + +amountMoney;
 
                 await applyUser.save();
 
@@ -121,7 +121,7 @@ module.exports = {
                 if (applyUser === null) {
                     throw createError(602, ' account number or username not exit');
                 }
-                applyUser.currentBalance = +applyUser.currentBalance + amountMoney;
+                applyUser.currentBalance = +applyUser.currentBalance + +amountMoney;
 
                 await applyUser.save();
 
@@ -188,6 +188,7 @@ module.exports = {
 
             let conditionQuery = {
                 $and: [{
+                    $or: [{ bankAccountReceiver: userSender.accountNumber }, { bankAccountReceiver: userSender.accountNumber }]
 
                 },
                 ]

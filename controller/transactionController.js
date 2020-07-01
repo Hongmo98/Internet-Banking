@@ -143,12 +143,7 @@ module.exports = {
 
 
     },
-    // {
-    //     "receiver": "02410001612496 ",
-    //     "amountMoney":200000,
-    //     "content" :"t chuyển cho m nè hehe",
-    //     "typeSend" :"+",
-    // }    
+
     transferInternal: async (req, res, next) => {
 
         let { userId } = req.tokePayload;
@@ -316,60 +311,51 @@ module.exports = {
 
     saveReceive: async (req, res, next) => {
         let { userId } = req.tokePayload;
-        // {
-        //     "accountNumber":"1591656428697",
-        //     "accountName"  :"nguyen thi hu huong",
-        //     "idBank"  :"5ee353c900cceb8a5001c7cf",
-        //     "nameRemind":"huong huong"
-        // }
         let { accountNumber, idBank, nameRemind } = req.body
-        console.log(req.body)
-        if (idBank === "5ee353c900cceb8a5001c7cf") {
-            let account = await bankAccount.findOne({ accountNumber: accountNumber });
-            if (account === null) {
-                next({ error: { message: "acountNumber not found", code: 422 } });
+        try {
+            if (idBank === "5ee353c900cceb8a5001c7cf") {
+                let account = await bankAccount.findOne({ accountNumber: accountNumber });
+                if (account === null) {
+                    next({ error: { message: "acountNumber not found", code: 422 } });
+                    return;
+                }
+            } else {
+                let bank = await linkedBank.findById({ _id: ObjectId(idBank) });
+                console.log('2', bank)
+                if (!bank) {
+                    next({ error: { message: "bank number exit ", code: 422 } });
+                    return;
+                }
+            }
+            let name = " ";
+            let number = await receiverInfo.findOne({ numberAccount: accountNumber, isDelete: false });
+            if (number) {
+                next({ error: { message: "acountNumber exit", code: 422 } });
                 return;
             }
-        }
+            if (nameRemind === '') {
+                name = number.accountName;
 
-        let number = await receiverInfo.find({ numberAccount: accountNumber, isDelete: false });
+            }
 
-        if (number) {
-            next({ error: { message: "acountNumber exit", code: 422 } });
-            return;
-        }
-
-        let bank = await linkedBank.findById({ _id: ObjectId(idBank) });
-        console.log('2', bank)
-        if (!bank) {
-            next({ error: { message: "bank number exit ", code: 422 } });
-            return;
-        }
-        let name = " ";
-        if (nameRemind === '') {
-            name = account.accountName;
-
-        }
-        else {
-            name = nameRemind;
-        }
-
-
-        let saveInfo = new receiverInfo({
-            numberAccount: accountNumber,
-            userId: userId,
-            idBank: idBank,
-            nameRemind: name
-        })
-        try {
-
+            else {
+                name = nameRemind;
+            }
+            let saveInfo = new receiverInfo({
+                numberAccount: accountNumber,
+                userId: userId,
+                idBank: idBank,
+                nameRemind: name
+            })
             await saveInfo.save();
-            let object = { msg: 'save information receiver in success', saveInfo }
-            res.status(200).json({ result: object });
-        } catch (err) {
-            next(err);
-        }
 
+
+            let link = await linkedBank.findById({ _id: ObjectId(idBank) });
+
+            let object = { msg: 'save information receiver in success', saveInfo, link }
+
+            res.status(200).json({ result: object });
+        } catch (err) { next(err) };
     },
     receiverTransfer: async (req, res, next) => {
 
@@ -387,14 +373,10 @@ module.exports = {
         if (type) {
 
             conditionQuery.$and.push({ idBank: { $in: [ObjectId(idBank)] } })
-
-
         }
         else {
 
             conditionQuery.$and.push({ idBank: { $nin: [ObjectId(idBank)] } })
-
-
 
         }
 
@@ -460,6 +442,7 @@ module.exports = {
         let { userId } = req.tokePayload;
         let objectUpdate = { ...req.body };
         let id = req.body.id;
+        let idBank = req.body.idBank;
         delete objectUpdate["id"];
         try {
             let receiver = await receiverInfo.findOneAndUpdate({ _id: ObjectId(id), userId: ObjectId(userId) }, objectUpdate, { new: true });
@@ -467,7 +450,9 @@ module.exports = {
             if (!e) {
                 return next({ error: { message: 'receiver not exists!' } });
             }
-            res.status(200).json({ result: receiver });
+            let link = await linkedBank.findById({ _id: ObjectId(idBank) });
+            let object = { receiver, link }
+            res.status(200).json({ result: object });
         } catch (error) {
             next({ error: { message: 'Err', code: 601 } });
         }
@@ -481,11 +466,6 @@ module.exports = {
     requestDept: async (req, res, next) => {
         let { userId, role } = req.tokePayload;
 
-        // {
-        //     "numberAccount" :"1592105265271",  
-        //     "amountMoney":"20000",
-        //      "content":"m con no tao nhe"
-        // }  
         let { numberAccount, amountMoney, content } = req.body;
 
 

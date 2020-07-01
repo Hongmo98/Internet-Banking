@@ -17,6 +17,7 @@ const transactionSchema = new Schema({
     timeOTP: { type: Date, default: Date.now },
     typeTransaction: String,
     fee: Number,
+    nameBank: String,
     createAt: { type: Date },
 })
 
