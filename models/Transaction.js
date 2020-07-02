@@ -19,6 +19,7 @@ const transactionSchema = new Schema({
     fee: Number,
     nameBank: String,
     createAt: { type: Date },
+    totalTransaction: Number,
 })
 
 mongoose.model('transaction', transactionSchema);

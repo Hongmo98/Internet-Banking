@@ -14,8 +14,8 @@ const config = require("./../config/key");
 module.exports = {
     //   phi edited
     createEmployee: async (req, res, next) => {
-        // let { userId } = req.tokePayload;
-        let { fullName, email } = req.body;
+
+        let { fullName, email, role } = req.body;
         let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 
         if (!regex.test(email)) {
@@ -43,7 +43,7 @@ module.exports = {
                 username: userName,
                 hashPassword: hashPass,
                 fullName: fullName,
-                role: "EMPLOYEE",
+                role: role,
             });
             await saveLoginUser.save();
             let data = { saveLoginUser, password };
@@ -179,7 +179,7 @@ module.exports = {
                     {
                         $group: {
                             _id: nameBank,
-                            total: { $sum: { $multiply: ["$amount", "$fee"] } },
+                            total: { $sum: { $multiply: ["$totalTransaction"] } },
 
                             count: { $sum: 1 },
                         }

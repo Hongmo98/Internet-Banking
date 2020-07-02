@@ -106,23 +106,13 @@ module.exports = {
             let nameReceiver = userReceiver.accountName;
 
             let token = otp.generateOTP();
-            let object = `
-            You can use our Internet Banking services at our website "http://www.mpbank.com.vn" right after receiving this email.`
-
-            let b = `This password will expire in 5 minutes..`
-
-            let c = ` Do not reply to this automatically-generated email. If you have any questions, please contact MPBank Contact Center via number 0334994998 or our branches`
-
-            let d = ` Thank you for using our services.`
-            let a = '<p>You are making a bank transfer in MPBank Internet Banking. </b> <ul><li> Your transaction code is <h1>' + token + '</h1></li> <li>' + object + '</li> <li>' + b + '</li>  <li>' + c + '</li><li>' + d + '</li>  </ul>'
 
             client.setex(userId, 100, token, function (err) {
 
                 console.error(err);
             });
 
-
-
+            let a = formatEmail(token);
             mailer.sentMailer("mpbank.dack@gmail.com", { email }, "MPBank Transfer", a)
                 .then(async (json) => {
                     console.log(token);
@@ -213,7 +203,7 @@ module.exports = {
             return;
         }
 
-        let { code, receiver, amountMoney, content, typeSend, typeTransaction, idRemind, idBank } = req.body;
+        let { code, receiver, amountMoney, content, typeSend, typeTransaction, idRemind, nameBank } = req.body;
 
 
         let userSender = await bankAccount.findOne({ userId });
@@ -231,7 +221,7 @@ module.exports = {
                     next({ error: { message: "time otp expire", code: 422 } });
                     return;
                 } {
-                    console.log('1', value)
+
                     if (value === code) {
 
                         let userReceiver = await bankAccount.findOne({ accountNumber: receiver });
@@ -242,6 +232,8 @@ module.exports = {
 
                         let feeTransfer = + 2200;
                         let service = money + feeTransfer + 50000;
+                        let totalTransaction = feeTransfer + money
+
 
                         if (+userSender.currentBalance > service) {
                             if (typeSend === false) {
@@ -249,11 +241,13 @@ module.exports = {
                                 userReceiver.currentBalance = +userReceiver.currentBalance + money - feeTransfer;
 
                                 userSender.currentBalance = + userSender.currentBalance - money;
+
                             }
                             else {
                                 userReceiver.currentBalance = +userReceiver.currentBalance + money;
 
                                 userSender.currentBalance = + userSender.currentBalance - money - feeTransfer;
+
                             }
 
                             await userReceiver.save();
@@ -270,7 +264,8 @@ module.exports = {
                                 typeTransaction: typeTransaction,
                                 fee: 2200,
                                 status: "SUCCESS",
-                                idBank: idBank
+                                nameBank: nameBank,
+                                totalTransaction: totalTransaction
                             })
                             if (typeTransaction === 'INDEPT') {
                                 let deptTra = await deptInformation.findById({ _id: ObjectId(idRemind) })
@@ -280,14 +275,9 @@ module.exports = {
                                 console.log('save', deptTra)
                             }
                             await newTransaction.save();
-                            let re = await receiverInfo.findOne({ numberAccount: receiver });
-                            let type = false;
-                            if (re === null) {
-                                type = true;
-                            }
 
                             let pro = {
-                                userReceiver, userSender, newTransaction, msg: "transfer success", type
+                                userReceiver, userSender, newTransaction, msg: "transfer success",
                             };
                             res.status(200).json({ result: pro });
 
@@ -311,7 +301,8 @@ module.exports = {
 
     saveReceive: async (req, res, next) => {
         let { userId } = req.tokePayload;
-        let { accountNumber, idBank, nameRemind } = req.body
+        let { accountNumber, idBank, nameBeneficiary, nameRemind } = req.body
+        let fullName = "";
         try {
             if (idBank === "5ee353c900cceb8a5001c7cf") {
                 let account = await bankAccount.findOne({ accountNumber: accountNumber });
@@ -319,6 +310,7 @@ module.exports = {
                     next({ error: { message: "acountNumber not found", code: 422 } });
                     return;
                 }
+                fullName = account.accountName;
             } else {
                 let bank = await linkedBank.findById({ _id: ObjectId(idBank) });
                 console.log('2', bank)
@@ -327,25 +319,22 @@ module.exports = {
                     return;
                 }
             }
-            let name = " ";
+
             let number = await receiverInfo.findOne({ numberAccount: accountNumber, isDelete: false });
+            if (fullName === "") {
+                fullName = nameBeneficiary
+            }
             if (number) {
                 next({ error: { message: "acountNumber exit", code: 422 } });
                 return;
             }
-            if (nameRemind === '') {
-                name = number.accountName;
 
-            }
-
-            else {
-                name = nameRemind;
-            }
             let saveInfo = new receiverInfo({
                 numberAccount: accountNumber,
                 userId: userId,
                 idBank: idBank,
-                nameRemind: name
+                nameRemind: nameRemind,
+                nameBeneficiary: fullName
             })
             await saveInfo.save();
 
@@ -757,7 +746,19 @@ module.exports = {
 
 
 }
+formatEmail = (token) => {
+    let object = `
+    You can use our Internet Banking services at our website "http://www.mpbank.com.vn" right after receiving this email.`
 
+    let b = `This password will expire in 5 minutes..`
+
+    let c = ` Do not reply to this automatically-generated email. If you have any questions, please contact MPBank Contact Center via number 0334994998 or our branches`
+
+    let d = ` Thank you for using our services.`
+    let a = '<p>You are making a bank transfer in MPBank Internet Banking. </b> <ul><li> Your transaction code is <h1>' + token + '</h1></li> <li>' + object + '</li> <li>' + b + '</li>  <li>' + c + '</li><li>' + d + '</li>  </ul>'
+
+    return a;
+}
 
 
 

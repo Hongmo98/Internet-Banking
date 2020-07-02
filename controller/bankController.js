@@ -148,6 +148,18 @@ module.exports = {
                                 throw createError(422, 'cannot find account ');
 
                             }
+                            let totalTransaction = null;
+
+                            if (typeSend === true) {
+                                userReceiver.currentBalance = +userReceiver.currentBalance + +money;
+                                totalTransaction = +money;
+
+                            }
+                            else {
+                                userReceiver.currentBalance = +userReceiver.currentBalance + +money - fee;
+                                totalTransaction = +money + fee;
+                            }
+
                             let tranPartner = new transaction({
                                 bankAccountSender: accountSender,
                                 bankAccountReceiver: accountReceiver,
@@ -158,17 +170,9 @@ module.exports = {
                                 typeTransaction: "GETMONEY",
                                 status: "SUCCESS",
                                 fee: 3300,
+                                totalTransaction: totalTransaction
 
                             })
-
-                            if (typeSend === true) {
-                                userReceiver.currentBalance = +userReceiver.currentBalance + +money;
-                            }
-                            else {
-                                userReceiver.currentBalance = +userReceiver.currentBalance + +money - fee;
-                            }
-
-
                             await userReceiver.save();
                             await tranPartner.save();
 
@@ -422,18 +426,18 @@ module.exports = {
         let sender = await bankAccount.findOne({ userId });
         let numberSender = sender.accountNumber;
         let email = sender.email;
-        console.log(numberSender);
-        console.log(email);
+
+
 
         if (sender == null) {
             next({ error: { message: "Invalid data", code: 422 } });
             return;
         }
-        console.log(sender);
 
 
         let token = otp.generateOTP();
         console.log('token', token);
+        let format = formatEmail(token);
 
         const partner_code = "MtcwLbASeIXVnKurQCHrDCmsTEsBD7rQ44wHsEWjWtl8k";
         let { nameBank, content, amountMoney, receiver, typeSend } = req.body;
@@ -482,7 +486,7 @@ module.exports = {
 
                                 console.error(err);
                             });
-                            mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
+                            mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer MP bank", format)
                                 .then(async (json) => {
                                     let dataReceiver = { content, amountMoney, typeSend, nameBank }
                                     let data = { sender, info, fullName, dataReceiver, message: "send otp email " }
@@ -525,7 +529,7 @@ module.exports = {
 
                 console.error(err);
             });
-            mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer", token)
+            mailer.sentMailer("mpbank.dack@gmail.com", { email }, "transfer MP bank", format)
                 .then(async (json) => {
                     let dataReceiver = { content, amountMoney, typeSend, nameBank, receiver }
                     let data = { sender, fullName, dataReceiver, message: "send otp email " }
@@ -642,6 +646,7 @@ module.exports = {
                                                 status: "SUCCESS",
                                                 nameBank: nameBank,
                                                 typeSend: typeSend,
+                                                totalTransaction: transfer.totalTransaction
                                             })
                                             await newTransaction.save();
                                             await link.save();
@@ -697,6 +702,7 @@ module.exports = {
                             status: "SUCCESS",
                             nameBank: nameBank,
                             typeSend: typeSend,
+                            totalTransaction: moneyUser.totalTransaction
                         })
                         await newTransaction.save();
                         await link.save();
@@ -753,20 +759,21 @@ getSenderMoney = async (data, amountMoney, typeSend, sender) => {
     let fee = 3300;
     let total = senderMoney - money
     let check = money + fee;
-    console.log("check", check);
-    console.log("sender.currentBalance", sender.currentBalance)
+    let totalTransaction = null;
     if (sender.currentBalance > +check) {
-        if (typeSend === true) {
+        if (typeSend === false) {
 
             sender.currentBalance = total - fee;
+            totalTransaction = money + fee;
 
         } else {
             sender.currentBalance = total;
+            totalTransaction = money
 
         }
         await sender.save();
 
-        let transfer = { data, sender };
+        let transfer = { data, sender, totalTransaction };
         // console.log(transfer)
         return transfer;
     } else {
@@ -843,9 +850,21 @@ const getInfo = async (account_number) => {
     }
 }
 
-// const getData = (data) => {
-//     return data;
-// }
+formatEmail = (token) => {
+    let object = `
+    You can use our Internet Banking services at our website "http://www.mpbank.com.vn" right after receiving this email.`
+
+    let b = `This password will expire in 5 minutes..`
+
+    let c = ` Do not reply to this automatically-generated email. If you have any questions, please contact MPBank Contact Center via number 0334994998 or our branches`
+
+    let d = ` Thank you for using our services.`
+    let a = '<p>You are making a bank transfer in MPBank Internet Banking. </b> <ul><li> Your transaction code is <h1>' + token + '</h1></li> <li>' + object + '</li> <li>' + b + '</li>  <li>' + c + '</li><li>' + d + '</li>  </ul>'
+
+    return a;
+}
+
+
 
 
 
