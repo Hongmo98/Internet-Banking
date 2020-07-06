@@ -15,10 +15,7 @@ const otp = require("../utils/otp");
 
 module.exports = {
   registerAccount: async (req, res, next) => {
-    // {
-    //         "fullName": "vu han linh",
-    //             "email": "hanlinh010198@gmail.com",
-    //                 "phone": "0352349848",}
+
 
     let { fullName, email, phone } = req.body;
 
@@ -120,23 +117,27 @@ module.exports = {
     }
   },
   getCustomer: async (req, res, next) => {
-    let { username, accountNumber } = req.query;
 
-    let conditionQuery = null;
+    let conditionQuery = {
+      $and: [{},],
+    };
     try {
-      conditionQuery = await bankAccount.findOne({ username: username });
+      let e = await bankAccount.aggregate([{ $match: conditionQuery },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        }
+      },
+      {
+        $unwind: "$user",
+      },
 
-      if (username) {
-        conditionQuery = await bankAccount.findOne({ username: username });
-      } else {
-        conditionQuery = await bankAccount.findOne({
-          accountNumber: accountNumber,
-        });
-      }
-      if (!conditionQuery) {
-        throw createError(602, "Invalid value");
-      }
-      res.status(200).json({ result: conditionQuery });
+      ]);
+      res.status(200).json({ result: e });
+
     } catch (err) {
       nex(err);
     }

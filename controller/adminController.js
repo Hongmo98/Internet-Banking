@@ -1,12 +1,6 @@
 const mongoose = require("mongoose");
-const bankAccount = mongoose.model("bankAccount");
 const user = mongoose.model("user");
-const receiverInfo = mongoose.model("receiverInfo");
 const transaction = mongoose.model("transaction");
-const information = mongoose.model("information");
-const deptInformation = mongoose.model("deptInformation");
-const linkedBank = mongoose.model("linkedBank");
-const deptReminder = mongoose.model("deptReminder");
 const ObjectId = mongoose.Types.ObjectId;
 var createError = require("http-errors");
 var bcrypt = require("bcrypt");
@@ -53,7 +47,7 @@ module.exports = {
         }
     },
 
-    //   phi edited
+
     getAllEmployee: async (req, res, next) => {
         try {
             let employees = await user.find({
@@ -66,7 +60,7 @@ module.exports = {
         }
     },
 
-    //   phi edited
+
     getEmployee: async (req, res, next) => {
         let { id } = req.query;
         try {
@@ -77,20 +71,21 @@ module.exports = {
         }
     },
 
-    // t chua check
+
     updateEmployee: async (req, res, next) => {
-        let { userId } = req.tokePayload;
+
         let objectUpdate = { ...req.body };
         let id = req.body.id;
         delete objectUpdate["id"];
         try {
-            let receiver = await user.findOneAndUpdate({
-                _id: ObjectId(id),
+            let receiver = await user.findOneAndUpdate(
+                { _id: ObjectId(id) },
                 objectUpdate,
-                new: true,
-            });
+                { new: true },
+            );
+            console.log(receiver);
 
-            if (!e) {
+            if (!receiver) {
                 return next({ error: { message: "receiver not exists!" } });
             }
             res.status(200).json({ result: receiver });

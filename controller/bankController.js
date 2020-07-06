@@ -50,9 +50,6 @@ module.exports = {
         console.log("hehe", config.SECRET_KEY)
         let infoBank = await information.findOne({ secrekey: config.SECRET_KEY });
 
-        // console.log("mo", infoBank);
-
-
         let sig = account + infoBank.secrekey + req.headers['headerts'];
 
         if (req.headers['partnercode'] === infoBank.codePGP || req.headers['partnercode'] === codeRSA) {
@@ -623,9 +620,9 @@ module.exports = {
                                             { headers: _headers }
                                         )
                                         .then(async function (response) {
-                                            let transfer = await getSenderMoney(response.data, amountMoney, typeSend, userSender);
-                                            console.log("transfer", transfer);
-                                            if (transfer === "error") {
+                                            let getMoney = await getSenderMoney(response.data, amountMoney, typeSend, userSender);
+                                            console.log("transfer", getMoney);
+                                            if (getMoney === "error") {
                                                 next({ error: { message: "current balance not enough to transfer", code: 422 } });
                                                 return;
                                             }
@@ -646,7 +643,7 @@ module.exports = {
                                                 status: "SUCCESS",
                                                 nameBank: nameBank,
                                                 typeSend: typeSend,
-                                                totalTransaction: transfer.totalTransaction
+                                                totalTransaction: getMoney.totalTransaction
                                             })
                                             await newTransaction.save();
                                             await link.save();
@@ -655,7 +652,7 @@ module.exports = {
                                             if (re === null) {
                                                 type = true;
                                             }
-                                            let data = { newTransaction, link, partner: response.data, transfer, msg: 'transfer success', type }
+                                            let data = { newTransaction, link, partner: response.data, getMoney, msg: 'transfer success', type }
                                             res.status(200).json({ result: data });
 
                                         })
@@ -679,7 +676,7 @@ module.exports = {
 
                         const transfer = await sendMoney(content, amountMoney, receiver, typeSend, userSender);
                         console.log("hhe", transfer);
-                        let moneyUser = await getSenderMoney(transfer, amountMoney, typeSend, userSender);
+                        let getMoney = await getSenderMoney(transfer, amountMoney, typeSend, userSender);
                         console.log("moneyUser", moneyUser);
                         if (moneyUser === "error") {
                             next({ error: { message: "current balance not enough to transfer", code: 422 } });
@@ -702,7 +699,7 @@ module.exports = {
                             status: "SUCCESS",
                             nameBank: nameBank,
                             typeSend: typeSend,
-                            totalTransaction: moneyUser.totalTransaction
+                            totalTransaction: getMoney.totalTransaction
                         })
                         await newTransaction.save();
                         await link.save();
@@ -711,7 +708,7 @@ module.exports = {
                         if (re === null) {
                             type = true;
                         }
-                        let data = { newTransaction, link, transfer, msg: 'transfer success', type }
+                        let data = { newTransaction, link, transfer, getMoney, msg: 'transfer success', type }
                         res.status(200).json({ result: data });
                         // res.status(200).json({ transfer });
 
@@ -753,27 +750,27 @@ module.exports = {
         }
     }
 }
-getSenderMoney = async (data, amountMoney, typeSend, sender) => {
-    let senderMoney = +sender.currentBalance;
+getSenderMoney = async (data, amountMoney, typeSend, userSender) => {
+    let senderMoney = +userSender.currentBalance;
     let money = +amountMoney;
     let fee = 3300;
     let total = senderMoney - money
     let check = money + fee;
     let totalTransaction = null;
-    if (sender.currentBalance > +check) {
+    if (userSender.currentBalance > +check) {
         if (typeSend === false) {
 
-            sender.currentBalance = total - fee;
+            userSender.currentBalance = total - fee;
             totalTransaction = money + fee;
 
         } else {
-            sender.currentBalance = total;
+            userSender.currentBalance = total;
             totalTransaction = money
 
         }
-        await sender.save();
+        await userSender.save();
 
-        let transfer = { data, sender, totalTransaction };
+        let transfer = { data, userSender, totalTransaction };
         // console.log(transfer)
         return transfer;
     } else {

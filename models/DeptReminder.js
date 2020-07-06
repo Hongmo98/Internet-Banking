@@ -8,11 +8,11 @@ const deptReminderSchema = new Schema({
     bankAccountReceiver: String,
     amount: Number,
     contentNotification: String,
-    isRead: Boolean,
+    isRead: { type: Boolean, default: false },
     isDelete: { type: Boolean, default: false },
     createAt: { type: Date, default: Date() },
     iat: Number,
-    type: String,
+    type: { type: String, default: 'REMINDER' },
     linkTo: String,
 })
 

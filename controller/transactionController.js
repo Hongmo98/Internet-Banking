@@ -127,10 +127,6 @@ module.exports = {
             return;
         }
 
-        // } catch (err) {
-        //     next(err);
-        // }
-
 
     },
 
@@ -551,23 +547,9 @@ module.exports = {
     },
     getBadgeNumber: async (req, res, next) => {
         let { userId, role } = req.tokePayload;
-        let sender = await bankAccount.findOne({ userId });
-
-        if (sender == null) {
-            next({ error: { message: "Invalid data", code: 422 } });
-            return;
-        }
-        try {
-            let notifications = await deptReminder.find({ bankAccountReceiver: sender.accountNumber, isRead: false, isDelete: false });
-            return res.status(200).json({ result: notifications.length });
-        } catch (err) {
-            next(err);
-        }
-    },
-    showDeptRemindUnPay: async (req, res, next) => {
-
-        let { userId, role } = req.tokePayload;
-        // const ts = +req.query.ts || 0;
+        let ts = +req.query.ts || 0;
+        console.log("ts", ts)
+        let timeStap = moment().unix();
         try {
             let sender = await bankAccount.findOne({ userId });
 
@@ -579,41 +561,101 @@ module.exports = {
                 $and: [{
                     bankAccountReceiver: sender.accountNumber,
                 },
-                { isDelete: { $nin: [true] } },
-                    // { iat: { $gt: ts } }
-
+                { iat: { $gt: ts } },
+                    // { isDelete: { $nin: [true] } },
                 ]
             };
+
+            let notifications = await deptReminder.aggregate([
+                { $match: conditionQuery },
+            ])
+            console.log(notifications)
+            if (notifications.length > 0) {
+                res.status(200).json({
+                    result: notifications.length,
+                    timeStap
+                });
+            }
+            else {
+                loop++;
+                console.log(`loop: ${loop}`);
+                if (loop < 4) {
+                    setTimeout(getBadgeNumber, 15000);
+                } else {
+                    res.status(204).send('NO DATA.');
+                }
+            }
+        } catch (err) {
+            next(err);
+        }
+    },
+    setReadNotification: async (req, res, next) => {
+        if (typeof req.body.notificationId === 'undefined') {
+            next({ error: { message: "Invalid data", code: 402 } });
+            return;
+        }
+
+        let { notificationId } = req.body;
+        // let { userId } = req.tokePayload;
+
+
+        try {
+            let notification = await deptReminder.findById(notificationId);
+            notification.isRead = true;
+            console.log(notification);
+            await notification.save();
+            return res.status(200).json({ result: true });
+        } catch (err) {
+            next({ error: { message: "Server execute failed!", code: 776 } });
+        }
+    },
+    showDeptRemindUnPay: async (req, res, next) => {
+
+        let { userId, role } = req.tokePayload;
+        let ts = +req.query.ts || 0;
+        console.log("ts", ts)
+        let timeStap = moment().unix();
+        try {
+            let sender = await bankAccount.findOne({ userId });
+
+            if (sender == null) {
+                next({ error: { message: "Invalid data", code: 422 } });
+                return;
+            }
+            let conditionQuery = {
+                $and: [{
+                    bankAccountReceiver: sender.accountNumber,
+                },
+                { iat: { $gt: ts } },
+                { isDelete: { $nin: [true] } },
+                ]
+            };
+
             let dept = await deptInformation.aggregate([
                 { $match: conditionQuery },
-
             ])
-            res.status(200).json({ result: dept })
-            // let timeStap = moment().unix();
-            // // let dept = await deptInformation.find({ bankAccountReceiver: sender.accountNumber, isDelete: false }).filter(c => c.iat > ts);
-            // console.log('1', dept)
-            // console.log('12', dept.length)
-            // if (dept.length > 0) {
-            //     console.log("222");
-            //     let result = { timeStap, dept }
-            //     res.status(200).json({
-            //         result: result
-            //     });
-            // }
-            // else {
-            //     loop++;
-            //     console.log(`loop: ${loop}`);
-            //     if (loop < 4) {
-            //         setTimeout(showDeptRemindUnPay, 2500);
-            //     } else {
-            //         res.status(204).send('NO DATA.');
-            //     }
-            // }
+            console.log(dept)
+            if (dept.length > 0) {
+                res.status(200).json({
+                    result: dept,
+                    timeStap
+                });
+            }
+            else {
+                loop++;
+                console.log(`loop: ${loop}`);
+                if (loop < 4) {
+                    setTimeout(showDeptRemindUnPay, 15000);
+                } else {
+                    res.status(204).send('NO DATA.');
+                }
+            }
         } catch (err) {
             next(err);
         }
 
     },
+
     showDeptRemind: async (req, res, next) => {
         let { userId, role } = req.tokePayload;
         try {
@@ -672,6 +714,7 @@ module.exports = {
                 bankAccountSender: sender.accountNumber,
                 bankAccountReceiver: reCe,
                 contentNotification: content,
+                type: "DELETE"
             })
 
             await reminder.save();
