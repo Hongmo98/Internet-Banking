@@ -3,7 +3,7 @@ var createError = require('http-errors');
 const config = require('./../config/key');
 
 module.exports = function verify(roles) {
- 
+
     return [
         (req, res, next) => {
             const token = req.headers['x-access-token'];
@@ -11,8 +11,13 @@ module.exports = function verify(roles) {
 
             if (token) {
                 jwt.verify(token, config.SECRET_KEY, function (err, payload) {
-                    if (err)
-                        throw createError(401, err);
+                    if (err) {
+                        console.log(err.message);
+                        // throw createError(401, err.message);
+
+                        return res.status(408).json({ error: { message: err.message } });
+                    }
+                    console.log("mo");
                     req.tokePayload = payload;
                     console.log(req.tokePayload);
 

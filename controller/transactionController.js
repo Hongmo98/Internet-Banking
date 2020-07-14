@@ -16,6 +16,7 @@ const moment = require('moment');
 // const { broadcastAll } = require('../utils/ws');
 
 let loop = 0;
+let looptime = 0;
 
 // const src = 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com:13088';
 const client = redis.createClient('13088', 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com', { no_ready_check: true });
@@ -268,7 +269,19 @@ module.exports = {
 
                                 deptTra.status = "PAYED"
                                 await deptTra.save();
-                                console.log('save', deptTra)
+                                let ts = moment().unix();
+                                let deptUser = new deptReminder({
+                                    bankAccountSender: userSender.accountNumber,
+                                    bankAccountReceiver: receiver,
+                                    amount: amountMoney,
+                                    contentNotification: content,
+                                    iat: ts,
+                                    type: "PAY",
+
+                                })
+                                await deptUser.save();
+
+
                             }
                             await newTransaction.save();
 
@@ -535,7 +548,7 @@ module.exports = {
                 {
                     $unwind: "$users_sender"
                 },
-                { $sort: { createdAt: -1 } },
+                { $sort: { createAt: -1 } },
                 { $skip: +numberRecord * (+pageNumber - 1) },
                 { $limit: numberRecord }
             ]);
@@ -562,7 +575,7 @@ module.exports = {
                     bankAccountReceiver: sender.accountNumber,
                 },
                 { iat: { $gt: ts } },
-                    // { isDelete: { $nin: [true] } },
+                { isRead: { $nin: [true] } },
                 ]
             };
 
@@ -577,8 +590,8 @@ module.exports = {
                 });
             }
             else {
-                loop++;
-                console.log(`loop: ${loop}`);
+                looptime++;
+                console.log(`loop: ${looptime}`);
                 if (loop < 4) {
                     setTimeout(getBadgeNumber, 15000);
                 } else {
@@ -709,12 +722,14 @@ module.exports = {
             } else {
                 reCe = reminder.bankAccountSender;
             }
-
+            let ts = moment().unix();
             deptUser = new deptReminder({
                 bankAccountSender: sender.accountNumber,
                 bankAccountReceiver: reCe,
                 contentNotification: content,
-                type: "DELETE"
+                type: "DELETE",
+                iat: ts,
+
             })
 
             await reminder.save();

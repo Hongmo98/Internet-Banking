@@ -677,12 +677,12 @@ module.exports = {
                         const transfer = await sendMoney(content, amountMoney, receiver, typeSend, userSender);
                         console.log("hhe", transfer);
                         let getMoney = await getSenderMoney(transfer, amountMoney, typeSend, userSender);
-                        console.log("moneyUser", moneyUser);
-                        if (moneyUser === "error") {
+
+                        if (getMoney === "error") {
                             next({ error: { message: "current balance not enough to transfer", code: 422 } });
                             return;
                         }
-                        console.log(moneyUser);
+
                         let link = new saveSign({
                             respone: transfer,
                             sign: transfer.signature,
@@ -842,7 +842,7 @@ const getInfo = async (account_number) => {
         console.log(response.data);
         return response.data;
     } catch (error) {
-        console.log("err", error);
+        console.log("err", error.name);
         return error.name;
     }
 }

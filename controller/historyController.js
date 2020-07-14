@@ -66,6 +66,7 @@ module.exports = {
         // { $limit: +numberRecord },
         // { $sort: { 'createAt': 1 } }
       ])
+
       res.status(200).json({ result: e });
     }
     catch (err) {

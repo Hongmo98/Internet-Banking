@@ -3,10 +3,10 @@ var express = require('express');
 var router = express.Router();
 const controllerUser = require('../controller/userController');
 const verify = require('../middlewares/authMiddlewares');
-// const Unauthorized = require('../middlewares/loginAuth');
+
 
 router.post('/login', controllerUser.login);
-router.post('/captcha', controllerUser.recaptchaGoogle)
+
 
 router.post('/refresh', controllerUser.refreshToken);
 router.post('/requestForgotPassword', controllerUser.requestForgotPassword);

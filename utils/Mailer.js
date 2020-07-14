@@ -11,7 +11,7 @@ exports.sentMailer = function (from1, { email }, subject, content) {
             auth: {
                 // type: 'OAuth2',
                 user: 'mpbank.dack@gmail.com',
-                pass: 'mpbank.dack2020'
+                pass: 'MPBank@1234'
             },
         });
         let test = `
@@ -25,13 +25,6 @@ exports.sentMailer = function (from1, { email }, subject, content) {
             html: content
         };
 
-        transporter.verify(function (error, success) {
-            if (error) {
-                resolve({ message: 'Server is not ready to take our messages!', code: 400 });
-            } else {
-                console.log("Server is ready to take our messages");
-            }
-        });
 
         transporter.sendMail(mail, function (error, info) {
             if (error) {

@@ -12,22 +12,14 @@ const ObjectId = mongoose.Types.ObjectId;
 var randToken = require('rand-token');
 const mailer = require("../utils/Mailer");
 const otp = require("../utils/otp");
-// var Recaptcha = require('express-recaptcha').RecaptchaV3;
-// var recaptcha = new Recaptcha('6LdRWP8UAAAAAARZkcNKlpokIu-Bl4O0dyyqcGS9', '6LdRWP8UAAAAAIKjOpocx34nq-3R6nURnsiaY5c7');
+
 module.exports = {
 
     login: async (req, res, next) => {
-        // {
-        //     "username":"1591679264587",
-        //     "password":"dBkcH2dm"
-        //  }
+
         let { username, password } = req.body;
         console.log()
-        // if (password.length < 8) {
 
-        //     throw createError(422, "incorrect Email or password little than 3 characters");
-        //     return;
-        // }
         if (typeof username === undefined || typeof password === undefined) {
 
             throw createError(602, 'Invalid value');
@@ -80,34 +72,12 @@ module.exports = {
 
 
     },
-    recaptchaGoogle: async (req, res, next) => {
-        if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null) {
-            return res.json({ "responseCode": 1, "responseDesc": "Please select captcha" });
-        }
-        var secretKey = '6LdRWP8UAAAAAIKjOpocx34nq-3R6nURnsiaY5c7';
-        var verificationUrl = "https://www.google.com/recaptcha/api/siteverify?secret=" + secretKey + "&response=" + req.body['g-recaptcha-response'] + "&remoteip=" + req.connection.remoteAddress
-        request(verificationUrl, function (error, response, body) {
-            body = JSON.parse(body);
-            if (body.success !== undefined && !body.success) {
-                return res.json({ "responseCode": 1, "responseDesc": "Failed captcha verification" });
-            }
-            res.json({ "responseCode": 0, "responseDesc": "Sucess" });
-        });
-    },
 
 
     registerAccount: async (req, res, next) => {
 
-        // {
-        //     "fullName": "vu han linh",
-        //         "email": "hanlinh010198@gmail.com",
-        //             "phone": "0352349848",
-        //                 "password": "vu han linh"
-        // 
-        // 
-        //     "email": "hongmo241198@gmail.com",
-        //         "password": "nguyen thi hong mo"
-        // 
+
+
         let { fullName, email, phone } = req.body;
 
         let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
@@ -207,9 +177,8 @@ module.exports = {
         console.log(id);
         try {
             let u = await user.findById({ _id: id });
-            let userSender = await bankAccount.findOne({ userId: ObjectId(id) });
-            let dataSent = { userSender, u };
-            res.status(200).json({ result: userSender });
+
+            res.status(200).json({ result: u });
         } catch (err) {
             next(err);
         }
@@ -416,7 +385,7 @@ const generateAccessToken = (userId, role) => {
         role
     }
     const accessToken = jwt.sign(payload, config.SECRET_KEY, {
-        // expiresIn: '10m'
+        expiresIn: '10m'
     })
     return accessToken;
 };

@@ -18,7 +18,7 @@ const transactionSchema = new Schema({
     typeTransaction: String,
     fee: Number,
     nameBank: String,
-    createAt: { type: Date },
+    createAt: { type: Date, default: Date() },
     totalTransaction: Number,
 })
 

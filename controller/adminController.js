@@ -6,7 +6,7 @@ var createError = require("http-errors");
 var bcrypt = require("bcrypt");
 const config = require("./../config/key");
 module.exports = {
-    //   phi edited
+   
     createEmployee: async (req, res, next) => {
 
         let { fullName, email, role } = req.body;
@@ -93,7 +93,7 @@ module.exports = {
             next({ error: { message: "Err", code: 601 } });
         }
     },
-    //   phi edited
+   
     deleteEmployee: async (req, res, next) => {
         if (typeof req.body.employeeId === "undefined") {
             next({ error: { message: "Invalid data", code: 402 } });
@@ -113,7 +113,7 @@ module.exports = {
             next(err);
         }
     },
-    // t chua check
+  
     showhistoryLinkBank: async (req, res, next) => {
         let { startDate, endDate, nameBank, pageNumber, numberRecord } = req.query;
         pageNumber = +pageNumber || 1;
@@ -190,6 +190,7 @@ module.exports = {
             next(err);
         }
     },
+    
 };
 const generateUserName = () => {
     let date = Date.now();
