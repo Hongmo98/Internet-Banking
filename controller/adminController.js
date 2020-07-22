@@ -6,22 +6,21 @@ var createError = require("http-errors");
 var bcrypt = require("bcrypt");
 const config = require("./../config/key");
 module.exports = {
-   
+
     createEmployee: async (req, res, next) => {
 
         let { fullName, email, role } = req.body;
         let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 
         if (!regex.test(email)) {
-            throw createError(
-                422,
-                "incorrect Email or password little than 3 characters"
-            );
+            next({ error: { message: "incorrect Email or password little than 3 characters", code: 422 } });
+
             return;
         }
 
         if (typeof fullName === undefined || typeof email === undefined) {
-            throw createError(602, "Invalid value");
+
+            next({ error: { message: "Invalid value", code: 422 } });
         }
         try {
             let userFind = null;
@@ -30,7 +29,8 @@ module.exports = {
             let hashPass = bcrypt.hashSync(password, 10);
             userFind = await user.findOne({ email: email });
             if (userFind) {
-                throw createError(409, "Email already exist");
+                next({ error: { message: "Email already exist", code: 422 } });
+
             }
             let saveLoginUser = new user({
                 email: email,
@@ -93,7 +93,7 @@ module.exports = {
             next({ error: { message: "Err", code: 601 } });
         }
     },
-   
+
     deleteEmployee: async (req, res, next) => {
         if (typeof req.body.employeeId === "undefined") {
             next({ error: { message: "Invalid data", code: 402 } });
@@ -113,7 +113,7 @@ module.exports = {
             next(err);
         }
     },
-  
+
     showhistoryLinkBank: async (req, res, next) => {
         let { startDate, endDate, nameBank, pageNumber, numberRecord } = req.query;
         pageNumber = +pageNumber || 1;
@@ -153,7 +153,7 @@ module.exports = {
 
                     { $skip: +numberRecord * (+pageNumber - 1) },
                     { $limit: +numberRecord },
-                    { $sort: { 'createAt': 1 } },
+                    { $sort: { 'createAt': -1 } },
 
                 ]),
                 transaction.aggregate([
@@ -190,7 +190,7 @@ module.exports = {
             next(err);
         }
     },
-    
+
 };
 const generateUserName = () => {
     let date = Date.now();

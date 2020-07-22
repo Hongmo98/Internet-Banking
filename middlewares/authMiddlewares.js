@@ -13,7 +13,6 @@ module.exports = function verify(roles) {
                 jwt.verify(token, config.SECRET_KEY, function (err, payload) {
                     if (err) {
                         console.log(err.message);
-                        // throw createError(401, err.message);
 
                         return res.status(408).json({ error: { message: err.message } });
                     }
@@ -23,13 +22,14 @@ module.exports = function verify(roles) {
 
                     if (roles !== req.tokePayload.role) {
 
-                        return res.status(401).json({ message: 'Unauthorized' });
+                        return res.status(401).json({ error: { message: 'Unauthorized' } });
                     }
 
                     next();
                 })
             } else {
-                throw createError(401, 'No accessToken found');
+                return res.status(401).json({ error: { message: 'No accessToken found' } });
+
             }
         }
     ]

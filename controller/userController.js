@@ -21,8 +21,8 @@ module.exports = {
         console.log()
 
         if (typeof username === undefined || typeof password === undefined) {
+            next({ error: { message: "Invalid value", code: 602 } });
 
-            throw createError(602, 'Invalid value');
         }
         let userFind = null;
         const FRS = 80;
@@ -31,7 +31,8 @@ module.exports = {
             userFind = await user.findOne({ username: username });
             console.log(userFind);
             if (!userFind) {
-                throw createError(409, 'username already exist');
+                next({ error: { message: "username already exist", code: 602 } });
+
             }
             const userId = userFind.id;
             const role = userFind.role;
@@ -61,7 +62,7 @@ module.exports = {
 
             }
             else {
-                throw createError(409, 'password not correct ');
+                next({ error: { message: "password not correct", code: 602 } });
 
             }
 
@@ -84,14 +85,14 @@ module.exports = {
 
         if (!regex.test(email)) {
 
-            throw createError(422, "incorrect Email or password little than 3 characters");
+            next({ error: { message: "incorrect Email or password little than 3 characters", code: 422 } });
             return;
         }
 
         if (typeof fullName === undefined ||
             typeof email === undefined || typeof phone === undefined) {
+            next({ error: { message: "Invalid value", code: 422 } });
 
-            throw createError(602, 'Invalid value');
         }
         let userFind = null;
         let accountNumber = generateAccountNumber();
@@ -107,7 +108,9 @@ module.exports = {
 
         console.log(userFind);
         if (userFind) {
-            throw createError(409, 'Email already exist');
+            next({ error: { message: "Email already exist", code: 422 } });
+
+
         }
         let saveLoginUser = new user({
             email: email,
@@ -150,14 +153,17 @@ module.exports = {
         jwt.verify(accessToken, config.SECRET_KEY, { ignoreExpiration: true },
             async function (err, payload) {
                 if (err)
-                    throw createError(401, err);
+                    next({ error: { message: err, code: 422 } });
+
 
                 const { userId, role } = payload
                 try {
                     let ret = await userRefresh.findOne({ userId: userId, refreshToken: refreshToken });
 
                     if (ret === false) {
-                        throw createError(400, 'invalid refresh Token');
+                        next({ error: { message: 'invalid refresh Token', code: 400 } });
+
+
                     }
                     const Token = generateAccessToken(userId, role)
 
@@ -314,13 +320,7 @@ module.exports = {
             next({ error: { message: "Invalid data", code: 402 } });
             return;
         }
-        //  {
-        //      "email":"hanlinh010198@gmail.com",
-        //      "otp":"372976",
-        //      "newPassword":"hongmo234",
-        //         "username":"1591614021893 "
 
-        //  }
         let { email, otp, newPassword, username } = req.body;
         let currentUser = null;
 

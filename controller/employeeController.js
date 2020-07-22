@@ -22,10 +22,8 @@ module.exports = {
     let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 
     if (!regex.test(email)) {
-      throw createError(
-        422,
-        "incorrect Email or password little than 3 characters"
-      );
+      next({ error: { message: "incorrect Email or password little than 3 characters", code: 422 } });
+
       return;
     }
 
@@ -34,7 +32,9 @@ module.exports = {
       typeof email === undefined ||
       typeof phone === undefined
     ) {
-      throw createError(602, "Invalid value");
+
+      next({ error: { message: "Invalid value", code: 422 } });
+
     }
 
     let userFind = null;
@@ -52,7 +52,8 @@ module.exports = {
 
     console.log(userFind);
     if (userFind) {
-      throw createError(409, "Email already exist");
+      next({ error: { message: "Email already exist", code: 422 } });
+
     }
     let saveLoginUser = new user({
       email: email,
@@ -82,7 +83,8 @@ module.exports = {
   ApplyMoney: async (req, res, next) => {
     let { accountNumber, amountMoney } = req.body;
     if (typeof amountMoney === undefined || accountNumber === undefined) {
-      throw createError(602, "Invalid value");
+
+      next({ error: { message: "Invalid value", code: 602 } });
     }
 
     try {
@@ -91,7 +93,8 @@ module.exports = {
       if (userAccount) {
         let applyUser = await bankAccount.findOne({ userId: userAccount._id });
         if (applyUser === null) {
-          throw createError(602, "username  not exit");
+          next({ error: { message: "username  not exit", code: 602 } });
+
         }
         applyUser.currentBalance = +applyUser.currentBalance + +amountMoney;
 
@@ -104,7 +107,8 @@ module.exports = {
         });
 
         if (applyUser === null) {
-          throw createError(602, " account number or username not exit");
+          next({ error: { message: " account number or username not exit", code: 602 } });
+
         }
         applyUser.currentBalance = +applyUser.currentBalance + +amountMoney;
 
@@ -149,7 +153,8 @@ module.exports = {
     let bankAccountInfo = null;
     let userInformation = null;
     if (userInfo === undefined) {
-      throw createError(602, "Invalid value");
+      next({ error: { message: "Invalid value", code: 602 } });
+
     }
     try {
       conditionQuery = await bankAccount.findOne({ accountNumber: userInfo });
@@ -166,7 +171,8 @@ module.exports = {
         });
       }
       if (!bankAccountInfo) {
-        throw createError(602, "Invalid value");
+
+        next({ error: { message: "Invalid value", code: 602 } });
       }
       res.status(200).json({ result: bankAccountInfo });
     } catch (err) {
@@ -224,7 +230,11 @@ module.exports = {
           },
         });
       }
-      let e = await transaction.aggregate([{ $match: conditionQuery }]);
+      let e = await transaction.aggregate([
+        { $match: conditionQuery },
+        { $sort: { 'createAt': -1 } }
+
+      ]);
       res.status(200).json({ result: e });
     } catch (err) {
       next(err);

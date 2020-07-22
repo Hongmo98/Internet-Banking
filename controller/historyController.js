@@ -62,9 +62,8 @@ module.exports = {
 
       let e = await transaction.aggregate([
         { $match: conditionQuery },
-        // { $skip: +numberRecord * (+pageNumber - 1) },
-        // { $limit: +numberRecord },
-        // { $sort: { 'createAt': 1 } }
+      
+        { $sort: { 'createAt': -1 } }
       ])
 
       res.status(200).json({ result: e });
