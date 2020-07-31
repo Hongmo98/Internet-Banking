@@ -2,9 +2,7 @@ const mongoose = require("mongoose");
 const user = mongoose.model("user");
 const transaction = mongoose.model("transaction");
 const ObjectId = mongoose.Types.ObjectId;
-var createError = require("http-errors");
 var bcrypt = require("bcrypt");
-const config = require("./../config/key");
 module.exports = {
 
     createEmployee: async (req, res, next) => {

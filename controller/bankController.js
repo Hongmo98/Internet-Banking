@@ -17,7 +17,6 @@ const ObjectId = mongoose.Types.ObjectId;
 const mailer = require("../utils/Mailer");
 const otp = require("../utils/otp");
 const redis = require("redis");
-// const src = 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com:13088';
 const client = redis.createClient('13088', 'redis-13088.c8.us-east-1-2.ec2.cloud.redislabs.com', { no_ready_check: true });
 client.auth('Z9qiKNw7XcCx1AgrFJMdpC81DO8Betle', function (err) {
 
