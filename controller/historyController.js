@@ -11,78 +11,78 @@ var createError = require("http-errors");
 var bcrypt = require("bcrypt");
 const config = require("./../config/key");
 module.exports = {
-	historyTransactionSender: async (req, res, next) => {
-		const { userId } = req.tokePayload;
-		let {
-			typeTransaction,
-			startDate,
-			endDate,
-			pageNumber,
-			numberRecord,
-		} = req.query;
-		startDate = startDate || "";
-		pageNumber = +pageNumber || 1;
-		numberRecord = +numberRecord || 10;
-		try {
-			let userSender = await bankAccount.findOne({ userId });
-			if (userSender === null) {
-				next({ error: { message: "Not found account", code: 422 } });
-			}
-			let conditionQuery = {
-				$and: [
-					{
-						$or: [
-							{ bankAccountSender: userSender.accountNumber },
-							{ bankAccountReceiver: userSender.accountNumber },
-						],
-					},
-				],
-			};
-			if (typeTransaction) {
-				if (typeTransaction === "GETMONEY") {
-					conditionQuery.$and.push({ typeTransaction });
-				} else if (typeTransaction === "TRANSFER") {
-					conditionQuery.$and.push({ typeTransaction });
-				} else {
-					conditionQuery.$and.push({ typeTransaction });
-				}
-			}
+  historyTransactionSender: async (req, res, next) => {
+    const { userId } = req.tokePayload;
+    let {
+      typeTransaction,
+      startDate,
+      endDate,
+      pageNumber,
+      numberRecord,
+    } = req.query;
+    startDate = startDate || "";
+    pageNumber = +pageNumber || 1;
+    numberRecord = +numberRecord || 10;
+    try {
+      let userSender = await bankAccount.findOne({ userId });
+      if (userSender === null) {
+        next({ error: { message: "Not found account", code: 422 } });
+      }
+      let conditionQuery = {
+        $and: [
+          {
+            $or: [
+              { bankAccountSender: userSender.accountNumber },
+              { bankAccountReceiver: userSender.accountNumber },
+            ],
+          },
+        ],
+      };
+      if (typeTransaction) {
+        if (typeTransaction === "GETMONEY") {
+          conditionQuery.$and.push({ typeTransaction });
+        } else if (typeTransaction === "TRANSFER") {
+          conditionQuery.$and.push({ typeTransaction });
+        } else {
+          conditionQuery.$and.push({ typeTransaction });
+        }
+      }
 
-			if (startDate && endDate) {
-				conditionQuery.$and.push({
-					createAt: {
-						$gte: new Date(startDate),
-						$lt: new Date(endDate),
-					},
-				});
-			}
-			Promise.all([
-				transaction.aggregate([
-					{ $match: conditionQuery },
+      if (startDate && endDate) {
+        conditionQuery.$and.push({
+          createAt: {
+            $gte: new Date(startDate),
+            $lt: new Date(endDate),
+          },
+        });
+      }
+      Promise.all([
+        transaction.aggregate([
+          { $match: conditionQuery },
 
-					{ $skip: +numberRecord * (+pageNumber - 1) },
-					{ $limit: +numberRecord },
-					{ $sort: { createAt: -1 } },
-				]),
-				transaction.aggregate([
-					{ $match: conditionQuery },
+          // { $skip: +numberRecord * (+pageNumber - 1) },
+          // { $limit: +numberRecord },
+          { $sort: { createAt: -1 } },
+        ]),
+        transaction.aggregate([
+          { $match: conditionQuery },
 
-					{
-						$group: {
-							_id: {
-								typeTransaction,
-								month: "createAt",
-							},
-							total: { $sum: { $multiply: ["$totalTransaction"] } },
-							count: { $sum: 1 },
-						},
-					},
-				]),
-			]).then(([e, t]) => {
-				res.status(200).json({ result: { transaction: e, total: t } });
-			});
-		} catch (err) {
-			next(err);
-		}
-	},
+          {
+            $group: {
+              _id: {
+                typeTransaction,
+                month: "createAt",
+              },
+              total: { $sum: { $multiply: ["$totalTransaction"] } },
+              count: { $sum: 1 },
+            },
+          },
+        ]),
+      ]).then(([e, t]) => {
+        res.status(200).json({ result: { transaction: e, total: t } });
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
 };
