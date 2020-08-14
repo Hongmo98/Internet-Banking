@@ -4,207 +4,198 @@ const transaction = mongoose.model("transaction");
 const ObjectId = mongoose.Types.ObjectId;
 var bcrypt = require("bcrypt");
 module.exports = {
+	createEmployee: async (req, res, next) => {
+		let { fullName, email, role } = req.body;
+		let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 
-    createEmployee: async (req, res, next) => {
+		if (!regex.test(email)) {
+			next({
+				error: {
+					message: "incorrect Email or password little than 3 characters",
+					code: 422,
+				},
+			});
 
-        let { fullName, email, role } = req.body;
-        let regex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
+			return;
+		}
 
-        if (!regex.test(email)) {
-            next({ error: { message: "incorrect Email or password little than 3 characters", code: 422 } });
+		if (typeof fullName === undefined || typeof email === undefined) {
+			next({ error: { message: "Invalid value", code: 422 } });
+		}
+		try {
+			let userFind = null;
+			let userName = generateUserName();
+			let password = generatePassword();
+			let hashPass = bcrypt.hashSync(password, 10);
+			userFind = await user.findOne({ email: email });
+			if (userFind) {
+				next({ error: { message: "Email already exist", code: 422 } });
+			}
+			let saveLoginUser = new user({
+				email: email,
+				username: userName,
+				hashPassword: hashPass,
+				fullName: fullName,
+				role: role,
+			});
+			await saveLoginUser.save();
+			let data = { saveLoginUser, password };
+			res.status(200).json({ data });
+		} catch (err) {
+			next(err);
+		}
+	},
 
-            return;
-        }
+	getAllEmployee: async (req, res, next) => {
+		try {
+			let employees = await user.find({
+				isDelete: false,
+				role: "EMPLOYEE",
+			});
+			res.status(200).json({ result: employees });
+		} catch (err) {
+			next(err);
+		}
+	},
 
-        if (typeof fullName === undefined || typeof email === undefined) {
+	getEmployee: async (req, res, next) => {
+		let { id } = req.query;
+		try {
+			let employees = await user.findById({ _id: id });
+			res.status(200).json({ result: employees });
+		} catch (err) {
+			next(err);
+		}
+	},
 
-            next({ error: { message: "Invalid value", code: 422 } });
-        }
-        try {
-            let userFind = null;
-            let userName = generateUserName();
-            let password = generatePassword();
-            let hashPass = bcrypt.hashSync(password, 10);
-            userFind = await user.findOne({ email: email });
-            if (userFind) {
-                next({ error: { message: "Email already exist", code: 422 } });
+	updateEmployee: async (req, res, next) => {
+		let objectUpdate = { ...req.body };
+		let id = req.body.id;
+		delete objectUpdate["id"];
+		try {
+			let receiver = await user.findOneAndUpdate(
+				{ _id: ObjectId(id) },
+				objectUpdate,
+				{ new: true }
+			);
+			console.log(receiver);
 
-            }
-            let saveLoginUser = new user({
-                email: email,
-                username: userName,
-                hashPassword: hashPass,
-                fullName: fullName,
-                role: role,
-            });
-            await saveLoginUser.save();
-            let data = { saveLoginUser, password };
-            res.status(200).json({ data });
-        } catch (err) {
-            next(err);
-        }
-    },
+			if (!receiver) {
+				return next({ error: { message: "receiver not exists!" } });
+			}
+			res.status(200).json({ result: receiver });
+		} catch (error) {
+			next({ error: { message: "Err", code: 601 } });
+		}
+	},
 
+	deleteEmployee: async (req, res, next) => {
+		if (typeof req.body.employeeId === "undefined") {
+			next({ error: { message: "Invalid data", code: 402 } });
+			return;
+		}
 
-    getAllEmployee: async (req, res, next) => {
-        try {
-            let employees = await user.find({
-                isDelete: false,
-                role: "EMPLOYEE",
-            });
-            res.status(200).json({ result: employees });
-        } catch (err) {
-            next(err);
-        }
-    },
+		let { employeeId } = req.body;
+		let { userId } = req.tokePayload;
 
+		try {
+			let receiver = await user.findById({ _id: employeeId });
+			receiver.isDelete = true;
 
-    getEmployee: async (req, res, next) => {
-        let { id } = req.query;
-        try {
-            let employees = await user.findById({ _id: id });
-            res.status(200).json({ result: employees });
-        } catch (err) {
-            next(err);
-        }
-    },
+			await receiver.save();
+			return res.status(200).json({ result: true });
+		} catch (err) {
+			next(err);
+		}
+	},
 
+	showhistoryLinkBank: async (req, res, next) => {
+		let { startDate, endDate, nameBank, pageNumber, numberRecord } = req.query;
+		pageNumber = +pageNumber || 1;
+		numberRecord = +numberRecord || 10;
+		try {
+			let conditionQuery = {
+				$and: [{}],
+			};
+			if (startDate && endDate) {
+				conditionQuery.$and.push({
+					createAt: {
+						$gte: new Date(startDate),
+						$lt: new Date(endDate),
+					},
+				});
+			}
 
-    updateEmployee: async (req, res, next) => {
+			if (nameBank) {
+				conditionQuery.$and.push({ nameBank });
+			}
+			Promise.all([
+				transaction.aggregate([
+					{ $match: conditionQuery },
+					{
+						$lookup: {
+							from: "linkedbanks",
+							localField: "nameBank",
+							foreignField: "nameBank",
+							as: "linkBank",
+						},
+					},
+					{
+						$unwind: "$linkBank",
+					},
 
-        let objectUpdate = { ...req.body };
-        let id = req.body.id;
-        delete objectUpdate["id"];
-        try {
-            let receiver = await user.findOneAndUpdate(
-                { _id: ObjectId(id) },
-                objectUpdate,
-                { new: true },
-            );
-            console.log(receiver);
+					{ $skip: +numberRecord * (+pageNumber - 1) },
+					{ $limit: +numberRecord },
+					{ $sort: { createAt: -1 } },
+				]),
+				transaction.aggregate([
+					{ $match: conditionQuery },
+					{
+						$lookup: {
+							from: "linkedbanks",
+							localField: "nameBank",
+							foreignField: "nameBank",
+							as: "linkBank",
+						},
+					},
+					{
+						$unwind: "$linkBank",
+					},
 
-            if (!receiver) {
-                return next({ error: { message: "receiver not exists!" } });
-            }
-            res.status(200).json({ result: receiver });
-        } catch (error) {
-            next({ error: { message: "Err", code: 601 } });
-        }
-    },
-
-    deleteEmployee: async (req, res, next) => {
-        if (typeof req.body.employeeId === "undefined") {
-            next({ error: { message: "Invalid data", code: 402 } });
-            return;
-        }
-
-        let { employeeId } = req.body;
-        let { userId } = req.tokePayload;
-
-        try {
-            let receiver = await user.findById({ _id: employeeId });
-            receiver.isDelete = true;
-
-            await receiver.save();
-            return res.status(200).json({ result: true });
-        } catch (err) {
-            next(err);
-        }
-    },
-
-    showhistoryLinkBank: async (req, res, next) => {
-        let { startDate, endDate, nameBank, pageNumber, numberRecord } = req.query;
-        pageNumber = +pageNumber || 1;
-        numberRecord = +numberRecord || 10;
-        try {
-            let conditionQuery = {
-                $and: [{}],
-            };
-            if (startDate && endDate) {
-                conditionQuery.$and.push({
-                    'createAt': {
-                        $gte: new Date(startDate),
-                        $lt: new Date(endDate),
-                    }
-                })
-
-            }
-
-            if (nameBank) {
-                conditionQuery.$and.push({ nameBank })
-            }
-            Promise.all([
-                transaction.aggregate([
-                    { $match: conditionQuery },
-                    {
-                        $lookup: {
-                            from: "linkedbanks",
-                            localField: "nameBank",
-                            foreignField: "nameBank",
-                            as: "linkBank",
-                        },
-                    },
-                    {
-                        $unwind: "$linkBank",
-                    },
-
-
-                    { $skip: +numberRecord * (+pageNumber - 1) },
-                    { $limit: +numberRecord },
-                    { $sort: { 'createAt': -1 } },
-
-                ]),
-                transaction.aggregate([
-                    { $match: conditionQuery },
-                    {
-                        $lookup: {
-                            from: "linkedbanks",
-                            localField: "nameBank",
-                            foreignField: "nameBank",
-                            as: "linkBank",
-                        },
-                    },
-                    {
-                        $unwind: "$linkBank",
-                    },
-
-
-                    {
-                        $group: {
-                            _id: nameBank,
-                            total: { $sum: { $multiply: ["$totalTransaction"] } },
-
-                            count: { $sum: 1 },
-                        }
-                    },
-
-
-                ])
-            ]).then(([e, t]) => {
-                res.status(200).json({ result: { transaction: e, total: t } });
-
-            })
-        } catch (err) {
-            next(err);
-        }
-    },
-
+					{
+						$group: {
+							_id: {
+								nameBank,
+								month: "createAt",
+							},
+							total: { $sum: { $multiply: ["$totalTransaction"] } },
+							count: { $sum: 1 },
+						},
+					},
+				]),
+			]).then(([e, t]) => {
+				res.status(200).json({ result: { transaction: e, total: t } });
+			});
+		} catch (err) {
+			next(err);
+		}
+	},
 };
 const generateUserName = () => {
-    let date = Date.now();
-    let number = Math.random() * 16;
-    let accountNumber = parseInt(date + number);
-    return `EMP${accountNumber}`;
+	let date = Date.now();
+	let number = Math.random() * 16;
+	let accountNumber = parseInt(date + number);
+	return `EMP${accountNumber}`;
 };
 generatePassword = () => {
-    var buf = [],
-        chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-        charlen = chars.length,
-        length = 8 || 32;
+	var buf = [],
+		chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+		charlen = chars.length,
+		length = 8 || 32;
 
-    for (var i = 0; i < length; i++) {
-        buf[i] = chars.charAt(Math.floor(Math.random() * charlen));
-    }
+	for (var i = 0; i < length; i++) {
+		buf[i] = chars.charAt(Math.floor(Math.random() * charlen));
+	}
 
-    return buf.join("");
+	return buf.join("");
 };
